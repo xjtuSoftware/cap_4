@@ -42,7 +42,7 @@ using namespace llvm;
 namespace klee {
 
 TaintListener::TaintListener(Executor* executor, RuntimeDataManager* rdManager) :
-		BitcodeListener(), executor(executor), rdManager(rdManager) {
+		BitcodeListener(), executor(executor), runtimeData(rdManager) {
 	Kind = TaintListenerKind;
 }
 
@@ -54,14 +54,14 @@ TaintListener::~TaintListener() {
 //消息响应函数，在被测程序解释执行之前调用
 void TaintListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	currentEvent = trace->path.begin();
 	endEvent = trace->path.end();
 }
 
 void TaintListener::executeInstruction(ExecutionState &state,
 		KInstruction *ki) {
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	Instruction* inst = ki->inst;
 	Thread* thread = state.currentThread;
 //	std::cerr << "thread id : " << thread->threadId << " ";
@@ -375,7 +375,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 //TODO： Algorithm 2 AnalyseTaint
 void TaintListener::instructionExecuted(ExecutionState &state,
 		KInstruction *ki) {
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	if ((*currentEvent)) {
 		Instruction* inst = ki->inst;
 		Thread* thread = state.currentThread;
@@ -549,7 +549,7 @@ void TaintListener::createThread(ExecutionState &state, Thread* thread) {
 
 //消息相应函数，在前缀执行出错之后程序推出之前调用
 void TaintListener::executionFailed(ExecutionState &state, KInstruction *ki) {
-	rdManager->getCurrentTrace()->traceType = Trace::FAILED;
+	runtimeData->getCurrentTrace()->traceType = Trace::FAILED;
 }
 
 ref<Expr> TaintListener::manualMakeTaintSymbolic(ExecutionState& state,

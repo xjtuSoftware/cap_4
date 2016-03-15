@@ -47,7 +47,7 @@ using namespace llvm;
 namespace klee {
 
 SymbolicListener::SymbolicListener(Executor* executor, RuntimeDataManager* rdManager) :
-		BitcodeListener(), executor(executor), rdManager(rdManager) {
+		BitcodeListener(), executor(executor), runtimeData(rdManager) {
 	Kind = SymbolicListenerKind;
 	kleeBr = false;
 }
@@ -61,7 +61,7 @@ SymbolicListener::~SymbolicListener() {
 void SymbolicListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 
 	//收集全局变量初始化值
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	currentEvent = trace->path.begin();
 	endEvent = trace->path.end();
 	//收集assert
@@ -91,7 +91,7 @@ void SymbolicListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 
 
 void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	if ((*currentEvent)) {
 		Instruction* inst = ki->inst;
 		Thread* thread = state.currentThread;
@@ -379,7 +379,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 }
 
 void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *ki) {
-	Trace* trace = rdManager->getCurrentTrace();
+	Trace* trace = runtimeData->getCurrentTrace();
 	if ((*currentEvent)) {
 		Instruction* inst = ki->inst;
 		Thread* thread = state.currentThread;
@@ -566,7 +566,7 @@ void SymbolicListener::afterRunMethodAsMain() {
 	cerr << "######################本条路径为新路径####################\n";
 #if EVENTS_DEBUG
 	//true: output to file; false: output to terminal
-	rdManager.printCurrentTrace(true);
+	runtimeData.printCurrentTrace(true);
 	//			encode.showInitTrace();//need to be modified
 #endif
 }
@@ -580,7 +580,7 @@ void SymbolicListener::createThread(ExecutionState &state, Thread* thread) {
 
 //消息相应函数，在前缀执行出错之后程序推出之前调用
 void SymbolicListener::executionFailed(ExecutionState &state, KInstruction *ki) {
-	rdManager->getCurrentTrace()->traceType = Trace::FAILED;
+	runtimeData->getCurrentTrace()->traceType = Trace::FAILED;
 }
 
 ref<Expr> SymbolicListener::manualMakeSymbolic(ExecutionState& state,

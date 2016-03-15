@@ -48,7 +48,7 @@ void DTAM::DTAMParallel() {
 			for (std::vector<ref<klee::Expr> >::iterator ittt =
 					(*itt)->relatedSymbolicExpr.begin(), ieee =
 					(*itt)->relatedSymbolicExpr.end(); ittt != ieee; ittt++) {
-				std::string value = DealWithSymbolicExpr::getFullName(*ittt);
+				std::string value = DealSymbolicExpr::getFullName(*ittt);
 //				std::cerr << "name : " << value << "\n";
 				point->affectedVariable.push_back(allRead[value]);
 				allRead[value]->affectingVariable.push_back(point);
@@ -194,7 +194,7 @@ void DTAM::dtam() {
 		std::string name = (*it);
 		runtimeData->DTAMSerialMap.insert(trace->getAssemblyLine(name));
 		trace->DTAMSerialMap.insert(trace->getAssemblyLine(name));
-//		std::cerr << "name : " << name << "\n";
+		std::cerr << "name : " << name << "\n";
 	}
 	runtimeData->allDTAMSerialMap.push_back(trace->DTAMSerialMap.size());
 	runtimeData->DTAMSerial += trace->DTAMSerial.size();
@@ -213,7 +213,7 @@ void DTAM::dtam() {
 		runtimeData->DTAMParallelMap.insert(trace->getAssemblyLine(name));
 		trace->DTAMParallelMap.insert(trace->getAssemblyLine(name));
 		potentialTaintSymbolicExpr.insert(filter.getVarName(name));
-//		std::cerr << "name : " << name << "\n";
+		std::cerr << "name : " << name << "\n";
 	}
 	runtimeData->allDTAMParallelMap.push_back(trace->DTAMParallelMap.size());
 	runtimeData->DTAMParallel += trace->DTAMParallel.size();
@@ -235,7 +235,7 @@ void DTAM::dtam() {
 		std::string name = (*it);
 		runtimeData->DTAMhybridMap.insert(trace->getAssemblyLine(name));
 		trace->DTAMhybridMap.insert(trace->getAssemblyLine(name));
-//		std::cerr << "name : " << name << "\n";
+		std::cerr << "name : " << name << "\n";
 	}
 	runtimeData->allDTAMhybridMap.push_back(trace->DTAMhybridMap.size());
 	std::cerr << "\n";

@@ -1,22 +1,14 @@
-/*
- * SymbolicListener.h
- *
- *  Created on: 2015年7月21日
- *      Author: zhy
- */
-
 #ifndef LIB_CORE_DEALWITHSYMBOLIC_H_
 #define LIB_CORE_DEALWITHSYMBOLIC_H_
 
 #include "klee/Expr.h"
 #include "Trace.h"
 #include <string>
-
 #include "Event.h"
 
 namespace klee {
 
-class DealWithSymbolicExpr {
+class DealSymbolicExpr {
 
 private:
 	std::set<std::string> allRelatedSymbolicExpr;

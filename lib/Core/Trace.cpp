@@ -628,17 +628,17 @@ std::string Trace::getLine(std::string name) {
 		varName << name.at(i);
 		i++;
 	}
-//	std::cerr << "getAssemblyLine name : " << name << "\n";
+//	std::cerr << "getLine name : " << name << "\n";
 	std::map<std::string, std::vector<Event *> >::iterator all;
 	if (name.at(i) == 'S') {
 		all = allWriteSet.find(varName.str());
 		if (all == allWriteSet.end()) {
-			assert(0 && "allWriteSet getAssemblyLine can not find");
+			assert(0 && "allWriteSet getLine can not find");
 		}
 	} else {
 		all = allReadSet.find(varName.str());
 		if (all == allReadSet.end()) {
-			assert(0 && "allReadSet getAssemblyLine can not find");
+			assert(0 && "allReadSet getLine can not find");
 		}
 	}
 	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
@@ -648,8 +648,44 @@ std::string Trace::getLine(std::string name) {
 			return  Transfer::uint64toString((*it)->inst->info->line);
 		}
 	}
-	assert (0 && "getAssemblyLine can not find");
+	assert (0 && "getLine can not find");
 	return 0;
+}
+
+Event* Trace::getEvent(std::string name) {
+	std::stringstream varName;
+	varName.str("");
+	unsigned int i = 0;
+	while ((name.at(i) != 'S') && (name.at(i) != 'L')) {
+		varName << name.at(i);
+		i++;
+	}
+
+//	std::cerr << "getEvent name : " << name << "\n";
+	std::map<std::string, std::vector<Event *> >::iterator all;
+	if (name.at(i) == 'S') {
+		all = allWriteSet.find(varName.str());
+		if (all == allWriteSet.end()) {
+			assert(0 && "allWriteSet getEvent can not find");
+		}
+	} else {
+		all = allReadSet.find(varName.str());
+		if (all == allReadSet.end()) {
+			assert(0 && "allReadSet getEvent can not find");
+		}
+	}
+
+	Event* curr;
+
+	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
+			all->second.end(); it != ie; it++) {
+		if ((*it)->globalVarFullName == name) {
+			curr = (*it);
+			return curr;
+		}
+	}
+	assert (0 && "getEvent can not find");
+	return curr;
 }
 
 } /* namespace klee */

@@ -132,6 +132,7 @@ public:
 
 	std::string getAssemblyLine(std::string name);
 	std::string getLine(std::string name);
+	Event* getEvent(std::string name);
 
 private:
 	/*******************added by xdzhang**********************/

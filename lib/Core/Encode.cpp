@@ -95,9 +95,9 @@ void Encode::buildAllFormula() {
 
 void Encode::buildPTSFormula() {
 
-//	buildInitValueFormula(z3_taint_solver);
-//	buildPathCondition(z3_taint_solver);
-//	buildReadWriteFormula(z3_taint_solver);
+	buildInitValueFormula(z3_taint_solver);
+	buildPathCondition(z3_taint_solver);
+	buildReadWriteFormula(z3_taint_solver);
 
 	buildMemoryModelFormula(z3_taint_solver);
 	buildPartialOrderFormula(z3_taint_solver);
@@ -507,19 +507,19 @@ void Encode::PTS() {
 
 //		std::cerr << "constraint : " << (lhs == rhs) << "\n";
 
-//		Event* curr = ifFormula[i].first;
-//		for (unsigned j = 0; j < ifFormula.size(); j++) {
-//			Event* temp = ifFormula[j].first;
-//			expr currIf = z3_ctx.int_const(curr->eventName.c_str());
-//			expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
-//			expr constraint = z3_ctx.bool_val(1);
-//			if (curr->threadId == temp->threadId) {
-//				if (curr->eventId > temp->eventId)
-//					constraint = ifFormula[j].second;
-//			} else
-//				constraint = implies(tempIf < currIf, ifFormula[j].second);
-//			z3_solver.add(constraint);
-//		}
+		Event* curr = trace->getEvent((*it));
+		for (unsigned j = 0; j < ifFormula.size(); j++) {
+			Event* temp = ifFormula[j].first;
+			expr currIf = z3_ctx.int_const(curr->eventName.c_str());
+			expr tempIf = z3_ctx.int_const(temp->eventName.c_str());
+			expr constraint = z3_ctx.bool_val(1);
+			if (curr->threadId == temp->threadId) {
+				if (curr->eventId > temp->eventId)
+					constraint = ifFormula[j].second;
+			} else
+				constraint = implies(tempIf < currIf, ifFormula[j].second);
+			z3_taint_solver.add(constraint);
+		}
 		check_result result;
 		try {
 			result = z3_taint_solver.check();
@@ -530,26 +530,30 @@ void Encode::PTS() {
 		if (result == z3::sat) {
 			taintPTS.push_back(*it);
 			if (DTAMhybrid.find(*it) == DTAMhybrid.end()) {
-//				cerr << "taintPTS : " << *it << "\n";
-//				cerr << "DTAMhybrid not find" << "\n";
+				cerr << "taintPTS : " << *it << "\n";
+				cerr << "DTAMhybrid not find" << "\n";
 				model m = z3_taint_solver.get_model();
 //				std::cerr << "z3_taint_solver.get_model() \n" << m;
+			} else {
+				std::cerr << "taintPTS : " << *it << "\n";
+				std::cerr << "DTAMhybrid find" << "\n";
+				std::cerr << "getLine : " << trace->getLine(*it) << "\n";
 			}
 //			std::cerr << "taintPTS : " << *it << "\n";
 //			std::cerr << "z3_taint_solver \n" << z3_taint_solver;
-//			model m = z3_taint_solver.get_model();
+			model m = z3_taint_solver.get_model();
 //			std::cerr << "z3_taint_solver.get_model() \n" << m;
-//			for (std::vector<std::string>::iterator itt = it; itt != PTS.end(); itt++) {
-//				stringstream ss;
-//				ss << m.eval(z3_ctx.bool_const((*itt).c_str()));
-//				long isTaint = atoi(ss.str().c_str());
-//				if (isTaint != 0) {
-//					taintPTS.push_back(*itt);
-//					std::cerr << "taintPTS : " << *itt << "\n";
-//					itt--;
-//					PTS.erase(itt);
-//				}
-//			}
+			for (std::vector<std::string>::iterator itt = it; itt != PTS.end(); itt++) {
+				stringstream ss;
+				ss << m.eval(z3_ctx.bool_const((*itt).c_str()));
+				long isTaint = atoi(ss.str().c_str());
+				if (isTaint != 0) {
+					taintPTS.push_back(*itt);
+					std::cerr << "taintPTS : " << *itt << "\n";
+					itt--;
+					PTS.erase(itt);
+				}
+			}
 
 			PTS.erase(it);
 		} else {
