@@ -36,7 +36,8 @@ class DTAM {
 
 		void DTAMParallel();
 		void DTAMhybrid();
-		void initTaint();
+		void initTaint(std::vector<DTAMPoint*> &remainPoint);
+		void propagateTaint(std::vector<DTAMPoint*> &remainPoint);
 		void getTaint(std::set<std::string> &taint);
 		void dtam();
 

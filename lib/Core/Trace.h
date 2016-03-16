@@ -8,19 +8,19 @@
 #ifndef LIB_CORE_TRACE_H_
 #define LIB_CORE_TRACE_H_
 
-#include "Event.h"
-#include "Common.h"
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/Expr.h"
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Instructions.h"
-#else
-#include "llvm/Instruction.h"
-#endif
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Constant.h>
+#include <llvm/Support/raw_ostream.h>
 #include <map>
-#include <vector>
+#include <set>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "../../include/klee/Expr.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/util/Ref.h"
+#include "Event.h"
 
 namespace klee {
 
@@ -76,7 +76,7 @@ public:
 	std::set<std::string> initTaintSymbolicExpr;
 	std::set<std::string> taintSymbolicExpr;
 	std::set<std::string> unTaintSymbolicExpr;
-	std::set<std::string> potentialTaintSymbolicExpr;
+	std::set<std::string> potentialTaint;
 
 	std::set<std::string> DTAMSerial;
 	std::set<std::string> DTAMParallel;

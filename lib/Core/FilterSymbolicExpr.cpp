@@ -547,7 +547,7 @@ void FilterSymbolicExpr::filterUselessByTaint(Trace* trace) {
 			it++) {
 		unTaint.push_back(*it);
 	}
-	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaintSymbolicExpr;
+	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaint;
 	std::map<std::string, std::set<std::string>*> &varRelatedSymbolicExpr = trace->varRelatedSymbolicExpr;
 	std::string varName;
 

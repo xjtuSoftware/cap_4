@@ -568,29 +568,26 @@ void Encode::PTS() {
 		}
 		z3_taint_solver.pop();
 	}
-	runtimeData->taint += DTAMSerial.size();
-	runtimeData->taintPTS += taintPTS.size();
-	runtimeData->noTaintPTS += noTaintPTS.size();
-	runtimeData->allTaint.push_back(DTAMSerial.size());
-	runtimeData->allTaintPTS.push_back(taintPTS.size());
-	runtimeData->allNoTaintPTS.push_back(noTaintPTS.size());
+	runtimeData->taint.push_back(DTAMSerial.size());
+	runtimeData->taintPTS.push_back(taintPTS.size());
+	runtimeData->noTaintPTS.push_back(noTaintPTS.size());
 
 
 	std::cerr << "\n size : " <<  DTAMSerial.size() + taintPTS.size() << "\n";
 	for (std::set<std::string>::iterator it = DTAMSerial.begin();
 				it != DTAMSerial.end(); it++) {
-		runtimeData->taintMap.insert(trace->getAssemblyLine(*it));
+		runtimeData->allTaintMap.insert(trace->getAssemblyLine(*it));
 		trace->taintMap.insert(trace->getAssemblyLine(*it));
 		std::cerr << "DTAMSerial name : " << *it << " getLine : " << trace->getLine(*it) << "\n";
 	}
 	for (std::vector<std::string>::iterator it = taintPTS.begin();
 				it != taintPTS.end(); it++) {
-		runtimeData->taintMap.insert(trace->getAssemblyLine(*it));
+		runtimeData->allTaintMap.insert(trace->getAssemblyLine(*it));
 		trace->taintMap.insert(trace->getAssemblyLine(*it));
 		std::cerr << "taintPTS name : " << *it << " getLine : " << trace->getLine(*it) << "\n";
 	}
 
-	runtimeData->allTaintMap.push_back(trace->taintMap.size());
+	runtimeData->TaintMap.push_back(trace->taintMap.size());
 
 }
 
@@ -2004,7 +2001,7 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 		}
 	}
 
-	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaintSymbolicExpr;
+	std::set<std::string> &potentialTaintSymbolicExpr = trace->potentialTaint;
 
 	map<string, vector<Event *> >::iterator ir = trace->allReadSet.begin(); //key--variable,
 	Event *currentRead;

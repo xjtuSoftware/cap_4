@@ -7,14 +7,12 @@
 
 #include "RuntimeDataManager.h"
 
-#include "Transfer.h"
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Constants.h"
-#include "llvm/Support/raw_ostream.h"
-#else
-#include "llvm/Constants.h"
-#endif
-#include <iostream>
+#include <llvm/Support/raw_ostream.h>
+#include <iterator>
+#include <map>
+#include <sstream>
+#include <utility>
+
 
 using namespace std;
 using namespace llvm;
@@ -37,25 +35,16 @@ RuntimeDataManager::RuntimeDataManager() :
 	unSatCost = 0.0;
 	runState = 0;
 
-	taintCost = 0;
+	TaintCost = 0;
 	PTSCost = 0;
 	DTAMCost = 0;
 	DTAMParallelCost = 0;
 	DTAMhybridCost = 0;
 
-	DTAMSerial = 0;
-	DTAMParallel = 0;
-	DTAMhybrid = 0;
-
-	taint = 0;
-	taintPTS = 0;
-	noTaintPTS = 0;
-
 }
 
 RuntimeDataManager::~RuntimeDataManager() {
-	for (vector<Trace*>::iterator ti = traceList.begin(), te = traceList.end();
-			ti != te; ti++) {
+	for (vector<Trace*>::iterator ti = traceList.begin(), te = traceList.end(); ti != te; ti++) {
 		delete *ti;
 	}
 	string ErrorInfo;
@@ -74,7 +63,7 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "brGlobal:0" << "\n";
 	}
 	if (testedTraceList.size()) {
-		ss << "AllBranch:" << ( satBranch + unSatBranch ) * 1.0 / testedTraceList.size() << "\n";
+		ss << "AllBranch:" << (satBranch + unSatBranch) * 1.0 / testedTraceList.size() << "\n";
 		ss << "satBranch:" << satBranch * 1.0 / testedTraceList.size() << "\n";
 	} else {
 		ss << "AllBranch:0" << "\n";
@@ -86,7 +75,7 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "satCost:0" << "\n";
 	}
 	if (testedTraceList.size()) {
-		ss << "unSatBranch:" << unSatBranch * 1.0 / testedTraceList.size()  << "\n";
+		ss << "unSatBranch:" << unSatBranch * 1.0 / testedTraceList.size() << "\n";
 	} else {
 		ss << "unSatBranch:0" << "\n";
 	}
@@ -96,34 +85,26 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "unSatCost:0" << "\n";
 	}
 	if (testedTraceList.size()) {
-		ss << "uunSatBranch:" << uunSatBranch * 1.0 / testedTraceList.size()  << "\n";
+		ss << "uunSatBranch:" << uunSatBranch * 1.0 / testedTraceList.size() << "\n";
 	} else {
 		ss << "uunSatBranch:0" << "\n";
 	}
 	ss << "SolvingCost:" << solvingCost << "\n";
 	ss << "RunningCost:" << runningCost << "\n";
 
-	ss << "taintCost:" << taintCost << "\n";
+	ss << "allTaintCost:" << TaintCost << "\n";
 	ss << "PTSCost:" << PTSCost << "\n";
 	ss << "DTAMCost:" << DTAMCost << "\n";
-	ss << "DTAMParallelCost:" << DTAMParallelCost << "\n";
+	ss << "DTAMParallelCost:" << allDTAMParallelCost << "\n";
 	ss << "DTAMhybridCost:" << DTAMhybridCost << "\n";
 
 
-	ss << "DTAMSerial:" << DTAMSerial << "\n";
-	ss << "DTAMParallel:" << DTAMParallel << "\n";
-	ss << "DTAMhybrid:" << DTAMhybrid << "\n";
+	ss << "taintMap:" << allTaintMap.size() << "\n";
+	ss << "DTAMSerialMap:" << allDTAMSerialMap.size() << "\n";
+	ss << "DTAMParallelMap:" << allDTAMParallelMap.size() << "\n";
+	ss << "DTAMhybridMap:" << allDTAMhybridMap.size() << "\n";
 
-	ss << "taint:" << taint << "\n";
-	ss << "taintPTS:" << taintPTS << "\n";
-	ss << "noTaintPTS:" << noTaintPTS << "\n";
-
-	ss << "taintMap:" << taintMap.size() << "\n";
-	ss << "DTAMSerialMap:" << DTAMSerialMap.size() << "\n";
-	ss << "DTAMParallelMap:" << DTAMParallelMap.size() << "\n";
-	ss << "DTAMhybridMap:" << DTAMhybridMap.size() << "\n";
-
-	for (unsigned i =0; i < allTaintCost.size(); i++) {
+	for (unsigned i = 0; i < allTaintCost.size(); i++) {
 
 		ss << "\n";
 		ss << "times:" << i << "\n";
@@ -133,23 +114,22 @@ RuntimeDataManager::~RuntimeDataManager() {
 		ss << "allDTAMParallelCost:" << allDTAMParallelCost[i] << "\n";
 		ss << "allDTAMhybridCost:" << allDTAMhybridCost[i] << "\n";
 
-		ss << "allDTAMSerial:" << allDTAMSerial[i] << "\n";
-		ss << "allDTAMParallel:" << allDTAMParallel[i] << "\n";
-		ss << "allDTAMhybrid:" << allDTAMhybrid[i] << "\n";
+		ss << "allDTAMSerial:" << DTAMSerial[i] << "\n";
+		ss << "allDTAMParallel:" << DTAMParallel[i] << "\n";
+		ss << "allDTAMhybrid:" << DTAMhybrid[i] << "\n";
 
-		ss << "allTaint:" << allTaint[i] << "\n";
-		ss << "allTaintPTS:" << allTaintPTS[i] << "\n";
-		ss << "allNoTaintPTS:" << allNoTaintPTS[i] << "\n";
+		ss << "allTaint:" << taint[i] << "\n";
+		ss << "allTaintPTS:" << taintPTS[i] << "\n";
+		ss << "allNoTaintPTS:" << noTaintPTS[i] << "\n";
 
-		ss << "allDTAMSerialMap:" << allDTAMSerialMap[i] << "\n";
-		ss << "allDTAMParallelMap:" << allDTAMParallelMap[i] << "\n";
-		ss << "allDTAMhybridMap:" << allDTAMhybridMap[i] << "\n";
-		ss << "allTaintMap:" << allTaintMap[i] << "\n";
+		ss << "allDTAMSerialMap:" << DTAMSerialMap[i] << "\n";
+		ss << "allDTAMParallelMap:" << DTAMParallelMap[i] << "\n";
+		ss << "allDTAMhybridMap:" << DTAMhybridMap[i] << "\n";
+		ss << "allTaintMap:" << TaintMap[i] << "\n";
 
 	}
 
 	ss << "\n";
-
 
 	out_to_file << ss.str();
 	out_to_file.close();
@@ -175,7 +155,6 @@ void RuntimeDataManager::printCurrentTrace(bool file) {
 }
 
 Prefix* RuntimeDataManager::getNextPrefix() {
-	//cerr << "prefix num = " << scheduleSet.size() << endl;
 	if (scheduleSet.empty()) {
 		return NULL;
 	} else {
@@ -191,8 +170,7 @@ void RuntimeDataManager::clearAllPrefix() {
 
 bool RuntimeDataManager::isCurrentTraceUntested() {
 	bool result = true;
-	for (set<Trace*>::iterator ti = testedTraceList.begin(), te =
-			testedTraceList.end(); ti != te; ti++) {
+	for (set<Trace*>::iterator ti = testedTraceList.begin(), te = testedTraceList.end(); ti != te; ti++) {
 		if (currentTrace->isEqual(*ti)) {
 			result = false;
 			break;
@@ -208,8 +186,7 @@ bool RuntimeDataManager::isCurrentTraceUntested() {
 void RuntimeDataManager::printAllPrefix(ostream &out) {
 	out << "num of prefix: " << scheduleSet.size() << endl;
 	unsigned num = 1;
-	for (list<Prefix*>::iterator pi = scheduleSet.begin(), pe =
-			scheduleSet.end(); pi != pe; pi++) {
+	for (list<Prefix*>::iterator pi = scheduleSet.begin(), pe = scheduleSet.end(); pi != pe; pi++) {
 		out << "Prefix " << num << endl;
 		(*pi)->print(out);
 		num++;
@@ -220,16 +197,14 @@ void RuntimeDataManager::printAllTrace(ostream &out) {
 	out << "\nTrace Info:\n";
 	out << "num of trace: " << traceList.size() << endl << endl;
 	unsigned num = 1;
-	for (vector<Trace*>::iterator ti = traceList.begin(), te = traceList.end();
-			ti != te; ti++) {
+	for (vector<Trace*>::iterator ti = traceList.begin(), te = traceList.end(); ti != te; ti++) {
 		Trace* trace = *ti;
 		if (trace->isUntested) {
 			out << "Trace " << num << endl;
 			if (trace->abstract.empty()) {
 				trace->createAbstract();
 			}
-			for (vector<string>::iterator ai = trace->abstract.begin(), ae =
-					trace->abstract.end(); ai != ae; ai++) {
+			for (vector<string>::iterator ai = trace->abstract.begin(), ae = trace->abstract.end(); ai != ae; ai++) {
 				out << *ai << endl;
 			}
 			out << endl;

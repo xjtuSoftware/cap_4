@@ -158,7 +158,7 @@ void ListenerService::endControl(Executor* executor){
 		gettimeofday(&finish, NULL);
 		cost = (double) (finish.tv_sec * 1000000UL + finish.tv_usec
 				- start.tv_sec * 1000000UL - start.tv_usec) / 1000000UL;
-		rdManager.taintCost += cost;
+		rdManager.TaintCost += cost;
 		rdManager.allTaintCost.push_back(cost);
 
 		gettimeofday(&start, NULL);

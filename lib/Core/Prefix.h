@@ -8,12 +8,13 @@
 #ifndef LIB_CORE_PREFIX_H_
 #define LIB_CORE_PREFIX_H_
 
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/raw_ostream.h>
 #include <iostream>
-#include <vector>
 #include <map>
 #include <string>
+#include <vector>
 
+#include "../../include/klee/Internal/Module/KInstruction.h"
 #include "Event.h"
 
 namespace klee {
