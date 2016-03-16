@@ -1,10 +1,3 @@
-/*
- * HybridPoint.cpp
- *
- *  Created on: Feb 24, 2016
- *      Author: zhy
- */
-
 #include "DTAMPoint.h"
 
 DTAMPoint::DTAMPoint(std::string _name, std::vector<unsigned> _vectorClock) :
@@ -18,10 +11,10 @@ DTAMPoint::~DTAMPoint() {
 
 }
 
-bool DTAMPoint::isBefore(DTAMPoint *point) {
+bool DTAMPoint::operator<=(DTAMPoint *point) {
 	unsigned before = 0, after = 0, equal = 0;
 	for (unsigned i = 0; i < vectorClock.size(); i++) {
-		if(vectorClock[i] > point->vectorClock[i]){
+		if (vectorClock[i] > point->vectorClock[i]) {
 			after++;
 		} else if (vectorClock[i] < point->vectorClock[i]) {
 			before++;

@@ -50,8 +50,8 @@ void DTAM::DTAMParallel() {
 					(*itt)->relatedSymbolicExpr.end(); ittt != ieee; ittt++) {
 				std::string value = DealSymbolicExpr::getFullName(*ittt);
 //				std::cerr << "name : " << value << "\n";
-				point->affectedVariable.push_back(allRead[value]);
-				allRead[value]->affectingVariable.push_back(point);
+				point->affectedPoint.push_back(allRead[value]);
+				allRead[value]->affectingPoint.push_back(point);
 			}
 //			std::cerr << "affectingVariable : \n";
 			std::string varName = (*itt)->varName;
@@ -60,8 +60,8 @@ void DTAM::DTAMParallel() {
 					trace->allReadSet[varName].end(); ittt != ieee; ittt++) {
 				std::string value = (*ittt)->globalVarFullName;
 //				std::cerr << "name : " << value << "\n";
-				point->affectingVariable.push_back(allRead[value]);
-				allRead[value]->affectedVariable.push_back(point);
+				point->affectingPoint.push_back(allRead[value]);
+				allRead[value]->affectedPoint.push_back(point);
 			}
 			allWrite[globalVarFullName] = point;
 		}
@@ -81,25 +81,25 @@ void DTAM::DTAMhybrid() {
 //		}
 //		std::cerr << "\n";
 		for (std::vector<DTAMPoint*>::iterator itt =
-				point->affectingVariable.begin();
-				itt < point->affectingVariable.end();) {
+				point->affectingPoint.begin();
+				itt < point->affectingPoint.end();) {
 //			std::cerr << "affectingVariable name : " << (*itt)->name << " ";
 //			for (unsigned i = 0; i < (*itt)->vectorClock.size(); i++) {
 //				std::cerr << (*itt)->vectorClock[i] << " ";
 //			}
 //			std::cerr << "\n";
-			if (point->isBefore(*itt)) {
+			if (point << (*itt)) {
 				itt++;
 			} else {
 //				std::cerr << "erase\n";
 				for (std::vector<DTAMPoint*>::iterator ittt =
-						(*itt)->affectingVariable.begin();
-						ittt < (*itt)->affectingVariable.end(); ittt++) {
+						(*itt)->affectingPoint.begin();
+						ittt < (*itt)->affectingPoint.end(); ittt++) {
 					if (*ittt == point) {
-						(*itt)->affectedVariable.erase(ittt);
+						(*itt)->affectedPoint.erase(ittt);
 					}
 				}
-				point->affectingVariable.erase(itt);
+				point->affectingPoint.erase(itt);
 			}
 		}
 	}
@@ -141,8 +141,8 @@ void DTAM::initTaint() {
 		DTAMPoint *point = (*it);
 		remainPoint.pop_back();
 		for (std::vector<DTAMPoint*>::iterator itt =
-				point->affectingVariable.begin(), iee =
-				point->affectingVariable.end(); itt < iee; itt++) {
+				point->affectingPoint.begin(), iee =
+				point->affectingPoint.end(); itt < iee; itt++) {
 			if (!(*itt)->isTaint) {
 				(*itt)->isTaint = true;
 				remainPoint.push_back((*itt));
