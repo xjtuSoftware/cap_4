@@ -95,7 +95,7 @@ RuntimeDataManager::~RuntimeDataManager() {
 	ss << "allTaintCost:" << TaintCost << "\n";
 	ss << "PTSCost:" << PTSCost << "\n";
 	ss << "DTAMCost:" << DTAMCost << "\n";
-	ss << "DTAMParallelCost:" << allDTAMParallelCost << "\n";
+	ss << "DTAMParallelCost:" << DTAMParallelCost << "\n";
 	ss << "DTAMhybridCost:" << DTAMhybridCost << "\n";
 
 

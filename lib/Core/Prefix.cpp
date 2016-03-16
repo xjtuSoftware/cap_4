@@ -7,49 +7,41 @@
 
 #include "Prefix.h"
 
-#include "klee/Internal/Module/InstructionInfoTable.h"
+#include <llvm/IR/Instruction.h>
+#include <iterator>
 
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Instructions.h"
-#else
-#include "llvm/Instructions.h"
-#endif
+#include "../../include/klee/Internal/Module/InstructionInfoTable.h"
 
-using namespace::std;
-using namespace::llvm;
+using namespace ::std;
+using namespace ::llvm;
 
 namespace klee {
 
-Prefix::Prefix(vector<Event*>& eventList, std::map<Event*, uint64_t>& threadIdMap, std::string name)
-	: eventList(eventList),
-	  threadIdMap(threadIdMap),
-	  name(name){
-	// TODO Auto-generated constructor stub
-	pos = this->eventList.begin();
+Prefix::Prefix(vector<Event*>& eventList, std::map<Event*, uint64_t>& threadIdMap, std::string name) :
+		eventList(eventList), threadIdMap(threadIdMap), name(name) {
+	position = this->eventList.begin();
 }
 
-void Prefix::reuse(){
-	pos = this->eventList.begin();
+void Prefix::reuse() {
+	position = this->eventList.begin();
 }
 
 Prefix::~Prefix() {
-	// TODO Auto-generated destructor stub
+
 }
 
 vector<Event*>* Prefix::getEventList() {
 	return &eventList;
 }
 
-void Prefix::increase() {
+void Prefix::increasePosition() {
 	if (!isFinished()) {
-		pos++;
+		position++;
 	}
 }
 
-
-
 bool Prefix::isFinished() {
-	return pos == eventList.end();
+	return position == eventList.end();
 }
 
 Prefix::EventIterator Prefix::begin() {
@@ -61,26 +53,27 @@ Prefix::EventIterator Prefix::end() {
 }
 
 Prefix::EventIterator Prefix::current() {
-	return Prefix::EventIterator(pos);
+	return Prefix::EventIterator(position);
 }
 
 uint64_t Prefix::getNextThreadId() {
 	assert(!isFinished());
-	Event* event = *pos;
+	Event* event = *position;
 	map<Event*, uint64_t>::iterator ti = threadIdMap.find(event);
 	return ti->second;
 }
 
 unsigned Prefix::getCurrentEventThreadId() {
 	assert(!isFinished());
-	Event* event = *pos;
+	Event* event = *position;
 	return event->threadId;
 }
 
 void Prefix::print(ostream &out) {
 	for (vector<Event*>::iterator ei = eventList.begin(), ee = eventList.end(); ei != ee; ei++) {
 		Event* event = *ei;
-		out << "thread" << event->threadId << " " << event->inst->info->file << " " << event->inst->info->line << ": " << event->inst->inst->getOpcodeName();
+		out << "thread" << event->threadId << " " << event->inst->info->file << " " << event->inst->info->line << ": "
+				<< event->inst->inst->getOpcodeName();
 		map<Event*, uint64_t>::iterator ti = threadIdMap.find(event);
 		if (ti != threadIdMap.end()) {
 			out << "\n child threadId = " << ti->second;
@@ -106,10 +99,10 @@ void Prefix::print(raw_ostream &out) {
 
 KInstruction* Prefix::getCurrentInst() {
 	assert(!isFinished());
-	Event* event = *pos;
+	Event* event = *position;
 	return event->inst;
 }
-std::string Prefix::getName(){
+std::string Prefix::getName() {
 	return name;
 }
 

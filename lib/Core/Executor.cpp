@@ -3099,7 +3099,7 @@ void Executor::run(ExecutionState &initialState) {
 		listenerService->instructionExecuted(state, ki);
 
 		if (prefix) {
-			prefix->increase();
+			prefix->increasePosition();
 		}
 		if (execStatus != SUCCESS) {
 			updateStates(&state);
