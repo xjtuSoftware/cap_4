@@ -1,10 +1,3 @@
-/*
- * HybridPoint.h
- *
- *  Created on: Feb 24, 2016
- *      Author: zhy
- */
-
 #ifndef LIB_CORE_DTAMPOINT_H_
 #define LIB_CORE_DTAMPOINT_H_
 
