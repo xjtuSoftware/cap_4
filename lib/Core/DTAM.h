@@ -8,36 +8,37 @@
 #ifndef LIB_CORE_DTAM_
 #define LIB_CORE_DTAM_
 
-#include "DTAMPoint.h"
-#include "Trace.h"
-#include "Event.h"
-#include "RuntimeDataManager.h"
 #include <sys/time.h>
+#include <map>
+#include <set>
+#include <string>
 
-#include "DealSymbolicExpr.h"
+#include "DTAMPoint.h"
+#include "FilterSymbolicExpr.h"
+#include "RuntimeDataManager.h"
+#include "Trace.h"
 
 namespace klee {
 
-
 class DTAM {
-private:
-	RuntimeDataManager* runtimeData;
-	Trace* trace;
-	std::map<std::string, DTAMPoint*> allWrite;
-	std::map<std::string, DTAMPoint*> allRead;
-	struct timeval start, finish;
-	double cost;
-	DealSymbolicExpr filter;
+	private:
+		RuntimeDataManager* runtimeData;
+		Trace* trace;
+		std::map<std::string, DTAMPoint*> allWrite;
+		std::map<std::string, DTAMPoint*> allRead;
+		struct timeval start, finish;
+		double cost;
+		FilterSymbolicExpr filter;
 
-public:
-	DTAM(RuntimeDataManager* data);
-	~DTAM();
-	void DTAMParallel();
-	void DTAMhybrid();
-	void initTaint();
-	void getTaint(std::set<std::string> &taint);
-	void dtam();
+	public:
+		DTAM(RuntimeDataManager* data);
+		virtual ~DTAM();
 
+		void DTAMParallel();
+		void DTAMhybrid();
+		void initTaint();
+		void getTaint(std::set<std::string> &taint);
+		void dtam();
 
 };
 

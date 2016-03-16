@@ -137,7 +137,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 					Expr::Width size = executor->getWidthForLLVMType(ki->inst->getOperand(0)->getType());
 					ref<Expr> address = executor->eval(ki, 1, thread).value;
 					ref<Expr> symbolic = manualMakeSymbolic(state,
-							(*currentEvent)->globalVarFullName, size, isFloat);
+							(*currentEvent)->globalName, size, isFloat);
 					ref<Expr> constraint = EqExpr::create(value, symbolic);
 					trace->storeSymbolicExpr.push_back(constraint);
 //					cerr << "event name : " << (*currentEvent)->eventName << "\n";
@@ -153,7 +153,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						}
 						executor->evalAgainst(ki, 0, thread, svalue);
 					} else {
-						ref<Expr> svalue = (*currentEvent)->value.back();
+						ref<Expr> svalue = (*currentEvent)->instParameter.back();
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store value is symbolic");
 						} else 	if (id == Type::PointerTyID) {
@@ -213,7 +213,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value1->getKind() != Expr::Constant) {
 					Expr::Width width = value1->getWidth();
 					ref<Expr> value2;
-					if ((*currentEvent)->condition == true) {
+					if ((*currentEvent)->brCondition == true) {
 						value2 = ConstantExpr::create(true, width);
 					} else {
 						value2 = ConstantExpr::create(false, width);
@@ -282,7 +282,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						} else {
-							ref<Expr> svalue = (*currentEvent)->value[j-1];
+							ref<Expr> svalue = (*currentEvent)->instParameter[j-1];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else 	if (id == Type::PointerTyID) {
@@ -316,7 +316,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				assert (0 && "pointer is expr::read");
 			}
 //			std::cerr << "kgepi->base : " << base << std::endl;
-			std::vector<ref<klee::Expr> >::iterator first = (*currentEvent)->value.begin();
+			std::vector<ref<klee::Expr> >::iterator first = (*currentEvent)->instParameter.begin();
 			for (std::vector<std::pair<unsigned, uint64_t> >::iterator
 					it = kgepi->indices.begin(), ie = kgepi->indices.end();
 					it != ie; ++it) {
@@ -348,7 +348,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 //			SwitchInst *si = cast<SwitchInst>(inst);
 			ref<Expr> cond1 = executor->eval(ki, 0, thread).value;
 			if (cond1->getKind() != Expr::Constant) {
-				ref<Expr> cond2 = (*currentEvent)->value.back();
+				ref<Expr> cond2 = (*currentEvent)->instParameter.back();
 				ref<Expr> constraint = EqExpr::create(cond1, cond2);
 				trace->brSymbolicExpr.push_back(constraint);
 				trace->brEvent.push_back((*currentEvent));
@@ -405,9 +405,9 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 					ref<Expr> address = executor->eval(ki, 0, thread).value;
 					ref<Expr> value = executor->getDestCell(thread, ki).value;
 					ref<Expr> symbolic = manualMakeSymbolic(state,
-							(*currentEvent)->globalVarFullName, size, isFloat);
+							(*currentEvent)->globalName, size, isFloat);
 					executor->setDestCell(thread, ki, symbolic);
-					symbolicMap[(*currentEvent)->globalVarFullName] = value;
+					symbolicMap[(*currentEvent)->globalName] = value;
 //					cerr << "load globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
 //					cerr << "load value : " << value << "\n";
 					ref<Expr> constraint = EqExpr::create(value, symbolic);
@@ -522,7 +522,7 @@ void SymbolicListener::instructionExecuted(ExecutionState &state, KInstruction *
 				Expr::Width size = BIT_WIDTH;
 				ref<Expr> value = pthreados->read(0, size);
 				if (executor->isGlobalMO(pthreadmo)) {
-					string globalVarFullName = (*currentEvent)->globalVarFullName;
+					string globalVarFullName = (*currentEvent)->globalName;
 //					cerr << "globalVarFullName : " << globalVarFullName << "\n";
 					symbolicMap[globalVarFullName] = value;
 				}

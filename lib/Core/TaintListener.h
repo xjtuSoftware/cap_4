@@ -11,7 +11,7 @@
 #include "Executor.h"
 #include "RuntimeDataManager.h"
 #include "BitcodeListener.h"
-#include "DealSymbolicExpr.h"
+#include "FilterSymbolicExpr.h"
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/ExecutionState.h"
 
@@ -37,7 +37,7 @@ public:
 private:
 	Executor* executor;
 	RuntimeDataManager* runtimeData;
-	DealSymbolicExpr filter;
+	FilterSymbolicExpr filter;
 	std::vector<Event*>::iterator currentEvent, endEvent;
 	//此Map更新有两处，Load、某些函数。
 	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;

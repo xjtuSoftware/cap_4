@@ -538,10 +538,10 @@ void Trace::createAbstract() {
 //		cerr << fn << "\n";
 		for (unsigned i = 0; i < thread->size(); i++) {
 			Event* event = thread->at(i);
-			if (event->isConditionIns) {
+			if (event->isConditionInst) {
 //				cerr << "condition : " << event->condition << " ";
 //				event->inst->inst->dump();
-				ss << event->condition;
+				ss << event->brCondition;
 			}
 		}
 		abstract.push_back(ss.str());
@@ -611,7 +611,7 @@ std::string Trace::getAssemblyLine(std::string name) {
 	}
 	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
 			all->second.end(); it != ie; it++) {
-		if ((*it)->globalVarFullName == name) {
+		if ((*it)->globalName == name) {
 //			return  Transfer::uint64toString((*it)->threadId) + "_" + Transfer::uint64toString((*it)->threadEventId);
 			return  Transfer::uint64toString((*it)->inst->info->assemblyLine);
 		}
@@ -643,7 +643,7 @@ std::string Trace::getLine(std::string name) {
 	}
 	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
 			all->second.end(); it != ie; it++) {
-		if ((*it)->globalVarFullName == name) {
+		if ((*it)->globalName == name) {
 //			return  Transfer::uint64toString((*it)->threadId) + "_" + Transfer::uint64toString((*it)->threadEventId);
 			return  Transfer::uint64toString((*it)->inst->info->line);
 		}
@@ -679,7 +679,7 @@ Event* Trace::getEvent(std::string name) {
 
 	for (std::vector<Event *>::iterator it = all->second.begin(), ie =
 			all->second.end(); it != ie; it++) {
-		if ((*it)->globalVarFullName == name) {
+		if ((*it)->globalName == name) {
 			curr = (*it);
 			return curr;
 		}

@@ -64,7 +64,6 @@ private:
 	std::map<uint64_t, unsigned> storeRecord;
 	std::map<uint64_t, llvm::Type*> usedGlobalVariableRecord;
 	std::map<uint64_t, BarrierInfo*> barrierRecord;
-	std::map<llvm::Instruction*, VectorInfo*> getElementPtrRecord; // 记录getElementPtr解析的数组信息
 
 private:
 	//std::vector<string> monitoredFunction;

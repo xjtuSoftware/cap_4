@@ -75,7 +75,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 				if (value1->getKind() != Expr::Constant) {
 					Expr::Width width = value1->getWidth();
 					ref<Expr> value2;
-					if ((*currentEvent)->condition == true) {
+					if ((*currentEvent)->brCondition == true) {
 						value2 = ConstantExpr::create(true, width);
 					} else {
 						value2 = ConstantExpr::create(false, width);
@@ -89,7 +89,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 //			SwitchInst *si = cast<SwitchInst>(inst);
 			ref<Expr> cond1 = executor->eval(ki, 0, thread).value;
 			if (cond1->getKind() != Expr::Constant) {
-				ref<Expr> cond2 = (*currentEvent)->value.back();
+				ref<Expr> cond2 = (*currentEvent)->instParameter.back();
 				executor->evalAgainst(ki, 0, thread, cond2);
 			}
 			break;
@@ -137,7 +137,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 							}
 							executor->evalAgainst(ki, j, thread, svalue);
 						} else {
-							ref<Expr> svalue = (*currentEvent)->value[j - 1];
+							ref<Expr> svalue = (*currentEvent)->instParameter[j - 1];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else if (id == Type::PointerTyID) {
@@ -225,12 +225,12 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					Expr::Width size = executor->getWidthForLLVMType(
 							ki->inst->getOperand(0)->getType());
 					ref<Expr> symbolic = manualMakeTaintSymbolic(state,
-							(*currentEvent)->globalVarFullName, size);
+							(*currentEvent)->globalName, size);
 
 					//收集TS和PTS
-					std::string varName = (*currentEvent)->varName;
+					std::string varName = (*currentEvent)->name;
 					if (isTaint) {
-						trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
+						trace->DTAMSerial.insert((*currentEvent)->globalName);
 						manualMakeTaint(symbolic, true);
 						trace->taintSymbolicExpr.insert(varName);
 						if (trace->unTaintSymbolicExpr.find(varName) != trace->unTaintSymbolicExpr.end()) {
@@ -271,7 +271,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 						}
 						executor->evalAgainst(ki, 0, thread, svalue);
 					} else {
-						ref<Expr> svalue = (*currentEvent)->value.back();
+						ref<Expr> svalue = (*currentEvent)->instParameter.back();
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store value is symbolic");
 						} else if (id == Type::PointerTyID) {
@@ -333,7 +333,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 				assert(0 && "pointer is expr::read");
 			}
 			std::vector<ref<klee::Expr> >::iterator first =
-					(*currentEvent)->value.begin();
+					(*currentEvent)->instParameter.begin();
 			for (std::vector<std::pair<unsigned, uint64_t> >::iterator it =
 					kgepi->indices.begin(), ie = kgepi->indices.end(); it != ie;
 					++it) {
@@ -403,9 +403,9 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 							ki->inst->getType());
 					ref<Expr> value = executor->getDestCell(thread, ki).value;
 					ref<Expr> symbolic = manualMakeTaintSymbolic(state,
-							(*currentEvent)->globalVarFullName, size);
+							(*currentEvent)->globalName, size);
 					executor->setDestCell(thread, ki, symbolic);
-					symbolicMap[(*currentEvent)->globalVarFullName] = value;
+					symbolicMap[(*currentEvent)->globalName] = value;
 //					std::cerr << "globalVarFullName : " << (*currentEvent)->globalVarFullName << "\n";
 				}
 			} else {
@@ -437,7 +437,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 			if (isTaint) {
 				manualMakeTaint(value, true);
 				if (!inst->getType()->isPointerTy() && (*currentEvent)->isGlobal) {
-					trace->DTAMSerial.insert((*currentEvent)->globalVarFullName);
+					trace->DTAMSerial.insert((*currentEvent)->globalName);
 
 //					inst->dump();
 				}
@@ -487,7 +487,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				ObjectState *wos = state.addressSpace.getWriteable(mo, os);
 				wos->insertTaint(address);
 
-				trace->initTaintSymbolicExpr.insert((*currentEvent)->globalVarFullName);
+				trace->initTaintSymbolicExpr.insert((*currentEvent)->globalName);
 
 			} else if (f->getName() == "pthread_create") {
 
@@ -501,7 +501,7 @@ void TaintListener::instructionExecuted(ExecutionState &state,
 				ref<Expr> value = pthreados->read(0, size);
 				if (executor->isGlobalMO(pthreadmo)) {
 					string globalVarFullName =
-							(*currentEvent)->globalVarFullName;
+							(*currentEvent)->globalName;
 					symbolicMap[globalVarFullName] = value;
 				}
 

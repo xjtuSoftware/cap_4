@@ -1,12 +1,12 @@
-#ifndef LIB_CORE_DEALWITHSYMBOLIC_C_
-#define LIB_CORE_DEALWITHSYMBOLIC_C_
+#ifndef LIB_CORE_FILTERSYMBOLICEXPR_C_
+#define LIB_CORE_FILTERSYMBOLICEXPR_C_
 
 #define DEBUG 0
 
 #define OP1 0
 //1为失效，0为生效
 
-#include "DealSymbolicExpr.h"
+#include "FilterSymbolicExpr.h"
 #include "llvm/IR/Instruction.h"
 #include <sstream>
 #include <ostream>
@@ -16,7 +16,7 @@
 
 namespace klee {
 
-std::string DealSymbolicExpr::getVarName(ref<klee::Expr> value) {
+std::string FilterSymbolicExpr::getVarName(ref<klee::Expr> value) {
 //	std::cerr << "getVarName : " << value << "\n";
 	std::stringstream varName;
 	varName.str("");
@@ -38,7 +38,7 @@ std::string DealSymbolicExpr::getVarName(ref<klee::Expr> value) {
 	return varName.str();
 }
 
-std::string DealSymbolicExpr::getVarName(std::string globalVarFullName) {
+std::string FilterSymbolicExpr::getVarName(std::string globalVarFullName) {
 //	std::cerr << "getVarName : " << value << "\n";
 	std::stringstream varName;
 	varName.str("");
@@ -50,7 +50,7 @@ std::string DealSymbolicExpr::getVarName(std::string globalVarFullName) {
 	return varName.str();
 }
 
-std::string DealSymbolicExpr::getFullName(ref<klee::Expr> value) {
+std::string FilterSymbolicExpr::getFullName(ref<klee::Expr> value) {
 
 	ReadExpr *revalue;
 	if (value->getKind() == Expr::Concat) {
@@ -65,7 +65,7 @@ std::string DealSymbolicExpr::getFullName(ref<klee::Expr> value) {
 	return globalVarFullName;
 }
 
-void DealSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value, std::set<std::string>* relatedSymbolicExpr) {
+void FilterSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value, std::set<std::string>* relatedSymbolicExpr) {
 	if (value->getKind() == Expr::Read) {
 		std::string varName = getVarName(value);
 		if (relatedSymbolicExpr->find(varName) == relatedSymbolicExpr->end()) {
@@ -84,7 +84,7 @@ void DealSymbolicExpr::resolveSymbolicExpr(ref<klee::Expr> value, std::set<std::
 	}
 }
 
-void DealSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<klee::Expr> >* relatedSymbolicExpr,
+void FilterSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<klee::Expr> >* relatedSymbolicExpr,
 		bool* isTaint) {
 	if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
 		unsigned i;
@@ -116,7 +116,7 @@ void DealSymbolicExpr::resolveTaintExpr(ref<klee::Expr> value, std::vector<ref<k
 	}
 }
 
-void DealSymbolicExpr::addExprToSet(std::set<std::string>* Expr, std::set<std::string>* relatedSymbolicExpr) {
+void FilterSymbolicExpr::addExprToSet(std::set<std::string>* Expr, std::set<std::string>* relatedSymbolicExpr) {
 
 	for (std::set<std::string>::iterator it = Expr->begin(), ie = Expr->end(); it != ie; ++it) {
 		std::string varName = *it;
@@ -126,7 +126,7 @@ void DealSymbolicExpr::addExprToSet(std::set<std::string>* Expr, std::set<std::s
 	}
 }
 
-void DealSymbolicExpr::addExprToVector(std::vector<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
+void FilterSymbolicExpr::addExprToVector(std::vector<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
 
 	for (std::vector<std::string>::iterator it = Expr->begin(), ie = Expr->end(); it != ie; ++it) {
 		std::string varName = *it;
@@ -143,7 +143,7 @@ void DealSymbolicExpr::addExprToVector(std::vector<std::string>* Expr, std::vect
 	}
 }
 
-void DealSymbolicExpr::addExprToVector(std::set<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
+void FilterSymbolicExpr::addExprToVector(std::set<std::string>* Expr, std::vector<std::string>* relatedSymbolicExpr) {
 
 	for (std::set<std::string>::iterator it = Expr->begin(), ie = Expr->end(); it != ie; ++it) {
 		std::string varName = *it;
@@ -160,7 +160,7 @@ void DealSymbolicExpr::addExprToVector(std::set<std::string>* Expr, std::vector<
 	}
 }
 
-bool DealSymbolicExpr::isRelated(std::string varName) {
+bool FilterSymbolicExpr::isRelated(std::string varName) {
 	if (allRelatedSymbolicExpr.find(varName) != allRelatedSymbolicExpr.end()) {
 		return true;
 	} else {
@@ -168,7 +168,7 @@ bool DealSymbolicExpr::isRelated(std::string varName) {
 	}
 }
 
-void DealSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> RelatedSymbolicExpr) {
+void FilterSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> RelatedSymbolicExpr) {
 	std::string varName;
 
 	//PathCondition
@@ -225,17 +225,17 @@ void DealSymbolicExpr::fillterTrace(Trace* trace, std::set<std::string> RelatedS
 		if ((*currentEvent)->isGlobal == true) {
 			if ((*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Load
 					|| (*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Store) {
-				if (RelatedSymbolicExpr.find((*currentEvent)->varName) == RelatedSymbolicExpr.end() && !OP1) {
-					(*currentEvent)->usefulGlobal = false;
+				if (RelatedSymbolicExpr.find((*currentEvent)->name) == RelatedSymbolicExpr.end() && !OP1) {
+					(*currentEvent)->isEventRelatedToBranch = false;
 				} else {
-					(*currentEvent)->usefulGlobal = true;
+					(*currentEvent)->isEventRelatedToBranch = true;
 				}
 			}
 		}
 	}
 }
 
-void DealSymbolicExpr::filterUseless(Trace* trace) {
+void FilterSymbolicExpr::filterUseless(Trace* trace) {
 
 	std::string varName;
 	std::vector<std::string> remainingExprVarName;
@@ -323,7 +323,7 @@ void DealSymbolicExpr::filterUseless(Trace* trace) {
 				}
 				addExprToSet(tempSymbolicExpr, &allRelatedSymbolicExpr);
 #if DEBUG
-				std::cerr << "\n" << varName << "\n varRelatedSymbolicExpr " << std::endl;
+				std::cerr << "\n" << name << "\n varRelatedSymbolicExpr " << std::endl;
 				std::cerr << *itt << "\n";
 				for (std::set<std::string>::iterator it = tempSymbolicExpr->begin(),
 						ie = tempSymbolicExpr->end(); it != ie; ++it) {
@@ -339,7 +339,7 @@ void DealSymbolicExpr::filterUseless(Trace* trace) {
 	}
 
 #if DEBUG
-	std::cerr << "\n" << varName << "\n varRelatedSymbolicExpr " << std::endl;
+	std::cerr << "\n" << name << "\n varRelatedSymbolicExpr " << std::endl;
 	for (std::map<std::string, std::set<std::string>* >::iterator nit = varRelatedSymbolicExpr.begin();
 			nit != varRelatedSymbolicExpr.end(); ++nit) {
 		std::cerr << "name : " << (*nit).first << "\n";
@@ -451,14 +451,14 @@ void DealSymbolicExpr::filterUseless(Trace* trace) {
 		if ((*currentEvent)->isGlobal == true) {
 			if ((*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Load
 					|| (*currentEvent)->inst->inst->getOpcode() == llvm::Instruction::Store) {
-				if (allRelatedSymbolicExpr.find((*currentEvent)->varName) == allRelatedSymbolicExpr.end() && !OP1) {
+				if (allRelatedSymbolicExpr.find((*currentEvent)->name) == allRelatedSymbolicExpr.end() && !OP1) {
 //					(*currentEvent)->isGlobal = false;
-					(*currentEvent)->usefulGlobal = false;
+					(*currentEvent)->isEventRelatedToBranch = false;
 				} else {
-					(*currentEvent)->usefulGlobal = true;
+					(*currentEvent)->isEventRelatedToBranch = true;
 				}
 			} else {
-				(*currentEvent)->usefulGlobal = true;
+				(*currentEvent)->isEventRelatedToBranch = true;
 			}
 		}
 	}
@@ -483,7 +483,7 @@ void DealSymbolicExpr::filterUseless(Trace* trace) {
 
 }
 
-bool DealSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::string>* relatedSymbolicExpr) {
+bool FilterSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::string>* relatedSymbolicExpr) {
 	bool branch = false;
 	std::set<std::string> &RelatedSymbolicExpr = trace->RelatedSymbolicExpr;
 	RelatedSymbolicExpr.clear();
@@ -501,7 +501,7 @@ bool DealSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::string>*
 	for (std::set<std::string>::iterator nit = RelatedSymbolicExpr.begin(); nit != RelatedSymbolicExpr.end(); ++nit) {
 		varName = *nit;
 #if DEBUG
-		std::cerr << "\n varName : " << varName << std::endl;
+		std::cerr << "\n varName : " << name << std::endl;
 #endif
 		if (varRelatedSymbolicExpr.find(varName) != varRelatedSymbolicExpr.end()) {
 			addExprToSet(varRelatedSymbolicExpr[varName], &RelatedSymbolicExpr);
@@ -534,7 +534,7 @@ bool DealSymbolicExpr::filterUselessWithSet(Trace* trace, std::set<std::string>*
 	}
 }
 
-void DealSymbolicExpr::filterUselessByTaint(Trace* trace) {
+void FilterSymbolicExpr::filterUselessByTaint(Trace* trace) {
 
 	std::set<std::string> &taintSymbolicExpr = trace->taintSymbolicExpr;
 	std::vector<std::string> taint;
@@ -578,4 +578,4 @@ void DealSymbolicExpr::filterUselessByTaint(Trace* trace) {
 
 }
 
-#endif /* LIB_CORE_DEALWITHSYMBOLIC_C_ */
+#endif /* LIB_CORE_FILTERSYMBOLICEXPR_C_ */

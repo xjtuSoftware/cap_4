@@ -13,10 +13,10 @@
 #include <stack>
 #include <utility>
 
-#include "DealSymbolicExpr.h"
 #include "Trace.h"
 #include "KQuery2Z3.h"
 #include "Event.h"
+#include "FilterSymbolicExpr.h"
 #include "RuntimeDataManager.h"
 enum InstType {
 	NormalOp, GlobalVarOp, ThreadOp
@@ -33,7 +33,7 @@ private:
 	context z3_ctx;
 	solver z3_solver;
 	solver z3_taint_solver;
-	DealSymbolicExpr filter;
+	FilterSymbolicExpr filter;
 	unsigned formulaNum;
 	unsigned solvingTimes;
 

@@ -128,8 +128,8 @@ bool Encode::verify() {
 				<< ifFormula[i].first->inst->info->file << "#"
 				<< ifFormula[i].first->inst->info->line << "#"
 				<< ifFormula[i].first->eventName << "#"
-				<< ifFormula[i].first->condition << "-"
-				<< !(ifFormula[i].first->condition) << "\n";
+				<< ifFormula[i].first->brCondition << "-"
+				<< !(ifFormula[i].first->brCondition) << "\n";
 		out_file << ifFormula[i].second << "\n";
 	}
 	out_file <<"\nassertFormula\n";
@@ -138,8 +138,8 @@ bool Encode::verify() {
 				<< assertFormula[i].first->inst->info->file << "#"
 				<< assertFormula[i].first->inst->info->line << "#"
 				<< assertFormula[i].first->eventName << "#"
-				<< assertFormula[i].first->condition << "-"
-				<< !(assertFormula[i].first->condition) << "\n";
+				<< assertFormula[i].first->brCondition << "-"
+				<< !(assertFormula[i].first->brCondition) << "\n";
 		out_file << assertFormula[i].second << "\n";
 	}
 	out_file.close();
@@ -153,8 +153,8 @@ bool Encode::verify() {
 //				<< assertFormula[i].first->inst->info->file << "#"
 				<< assertFormula[i].first->inst->info->line << "#"
 				<< assertFormula[i].first->eventName << "#"
-				<< assertFormula[i].first->condition << "-"
-				<< !(assertFormula[i].first->condition) << "assert_bug";
+				<< assertFormula[i].first->brCondition << "-"
+				<< !(assertFormula[i].first->brCondition) << "assert_bug";
 		cerr << "Verifying assert " << i+1 << " @" << ss.str() << ": ";
 #endif
 		z3_solver.push();	//backtrack point 2
@@ -257,8 +257,8 @@ void Encode::check_if() {
 //				<< ifFormula[i].first->inst->info->file << "#"
 				<< ifFormula[i].first->inst->info->line << "#"
 				<< ifFormula[i].first->eventName << "#"
-				<< ifFormula[i].first->condition << "-"
-				<< !(ifFormula[i].first->condition);
+				<< ifFormula[i].first->brCondition << "-"
+				<< !(ifFormula[i].first->brCondition);
 		cerr << "Verifying branch " << num << " @" << ss.str() << ": ";
 #endif
 
@@ -450,19 +450,15 @@ void Encode::showInitTrace() {
 				<< trace->path[i]->eventName << "---"
 				<< trace->path[i]->inst->inst->getParent()->getParent()->getName().str()
 				<< "---" << trace->path[i]->inst->info->line << "---"
-				<< trace->path[i]->condition << "---";
+				<< trace->path[i]->brCondition << "---";
 		trace->path[i]->inst->inst->print(out_to_file);
 		if (currEvent->isGlobal) {
-			out_to_file << "--" << currEvent->globalVarFullName << "=";
-			string str = currEvent->globalVarFullName;
+			out_to_file << "--" << currEvent->globalName << "=";
+			string str = currEvent->globalName;
 			if (str == ""){
 				out_to_file << "\n";
 				continue;
 			}
-		}
-		if (currEvent->isLocal) {
-			out_to_file << "--" << currEvent->varName << "=";
-			string str = currEvent->varName;
 		}
 		out_to_file << "\n";
 	}
@@ -679,11 +675,11 @@ void Encode::showPrefixInfo(Prefix* prefix, Event* ifEvent) {
 				<< "---"
 				<< currEvent->inst->inst->getParent()->getParent()->getName().str()
 				<< "---" << currEvent->inst->info->line << "---"
-				<< currEvent->condition << "---";
+				<< currEvent->brCondition << "---";
 		currEvent->inst->inst->print(out_to_file);
 		if (currEvent->isGlobal) {
-			out_to_file << "--" << currEvent->globalVarFullName << "=";
-			string str = currEvent->globalVarFullName;
+			out_to_file << "--" << currEvent->globalName << "=";
+			string str = currEvent->globalName;
 			if (str == ""){
 				out_to_file << "\n";
 				continue;
@@ -693,17 +689,6 @@ void Encode::showPrefixInfo(Prefix* prefix, Event* ifEvent) {
 			ss << m.eval(z3_ctx.int_const(str.c_str()));
 #else
 			ss << m.eval(z3_ctx.bv_const(str.c_str(), BIT_WIDTH));	//just for
-#endif
-			out_to_file << ss.str();
-		}
-		if (currEvent->isLocal) {
-			out_to_file << "--" << currEvent->varName << "=";
-			string str = currEvent->varName;
-			stringstream ss;
-#if INT_ARITHMETIC
-			ss << m.eval(z3_ctx.int_const(str.c_str()));
-#else
-			ss << m.eval(z3_ctx.bv_const(str.c_str(), BIT_WIDTH));
 #endif
 			out_to_file << ss.str();
 		}
@@ -967,7 +952,7 @@ void Encode::buildOutputFormula() {
 			for (unsigned i = 0; i < maybeRead.size(); i++) {
 				//build the equation
 				expr write = z3_ctx.constant(
-						maybeRead[i]->globalVarFullName.c_str(), varType);//used write event
+						maybeRead[i]->globalName.c_str(), varType);//used write event
 				expr eq = (lhs == write);
 				//build the constrait of equation
 				expr writeOrder = z3_ctx.int_const(
@@ -1006,25 +991,17 @@ void Encode::markLatestWriteForGlobalVar() {
 			if (event->isGlobal) {
 				Instruction *I = event->inst->inst;
 				if (StoreInst::classof(I)) { //write
-					latestWriteOneThread[event->varName] = event;
-				} else if (!event->implicitGlobalVar.empty()
-						&& CallInst::classof(I)) {
-					for (unsigned i = 0; i < event->implicitGlobalVar.size();
-							i++) {
-						string curr = event->implicitGlobalVar[i];
-						string varName = curr.substr(0, curr.find('S', 0));
-						latestWriteOneThread[varName] = event;
-					}
+					latestWriteOneThread[event->name] = event;
 				} else { //read
 					Event * writeEvent;
 					map<string, Event *>::iterator it;
-					it = latestWriteOneThread.find(event->varName);
+					it = latestWriteOneThread.find(event->name);
 					if (it != latestWriteOneThread.end()) {
 						writeEvent = it->second;
 					} else {
 						writeEvent = NULL;
 					}
-					event->latestWrite = writeEvent;
+					event->latestWriteEventInSameThread = writeEvent;
 				}
 			}
 		}
@@ -1125,7 +1102,7 @@ void Encode::buildifAndassert() {
 		event = trace->brEvent[i];
 //		cerr << "br : " << trace->brSymbolicExpr[i] <<"\n";
 		res = kq->getZ3Expr(trace->brSymbolicExpr[i]);
-		if(event->isConditionIns == true){
+		if(event->isConditionInst == true){
 //			event->inst->inst->dump();
 //			string fileName = event->inst->info->file;
 //			unsigned line = event->inst->info->line;
@@ -1133,7 +1110,7 @@ void Encode::buildifAndassert() {
 			ifFormula.push_back(make_pair(event, res));
 //			cerr << "event name : " << ifFormula[i].first->eventName << "\n";
 //			cerr << "constraint : " << ifFormula[i].second << "\n";
-		}else if(event->isConditionIns == false){
+		}else if(event->isConditionInst == false){
 			z3_solver.add(res);
 		}
 	}
@@ -1545,7 +1522,7 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 			cerr << "global var read:" << read->first << "\n";
 			for (unsigned i = 0; i < read->second.size(); i++) {
 				cerr << read->second[i]->eventName << "---"
-						<< read->second[i]->globalVarFullName << "\n";
+						<< read->second[i]->globalName << "\n";
 			}
 		}
 		write = trace->usefulWriteSet.begin();
@@ -1553,7 +1530,7 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 			cerr << "global var write:" << write->first << "\n";
 			for (unsigned i = 0; i < write->second.size(); i++) {
 				cerr << write->second[i]->eventName << "---"
-						<< write->second[i]->globalVarFullName << "\n";
+						<< write->second[i]->globalName << "\n";
 			}
 		}
 	}
@@ -1584,8 +1561,8 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 						mayBeRead.push_back(iw->second[i]);
 				}
 			}
-			if (currentRead->latestWrite != NULL) {
-				mayBeRead.push_back(currentRead->latestWrite);
+			if (currentRead->latestWriteEventInSameThread != NULL) {
+				mayBeRead.push_back(currentRead->latestWriteEventInSameThread);
 			} else//if this read don't have the corresponding write, it may use from Initialization operation.
 			{
 				//so, build the formula constrainting this read uses from Initialization operation
@@ -1672,25 +1649,9 @@ expr Encode::readFromWriteFormula(Event * read, Event * write, string var) {
 	}
 //assert(I->getType()->getTypeID() == Type::PointerTyID && "Wrong Type!");
 	const z3::sort varType(llvmTy_to_z3Ty(type));
-	expr r = z3_ctx.constant(read->globalVarFullName.c_str(), varType);
+	expr r = z3_ctx.constant(read->globalName.c_str(), varType);
 	string writeVarName = "";
-	if (write->globalVarFullName == "" && !write->implicitGlobalVar.empty()) {
-		for (unsigned i = 0; i < write->implicitGlobalVar.size(); i++) {
-			if (strncmp(var.c_str(), write->implicitGlobalVar[i].c_str(),
-					var.size()) == 0) {
-#if FORMULA_DEBUG
-				cerr << "Event name : " << write->eventName << "\n";
-				cerr<< "rw : " << var.c_str() << "---"
-//						<< it->first.c_str()
-						<< "\n";
-#endif
-				writeVarName = write->implicitGlobalVar[i];
-				break;
-			}
-
-		}
-	} else
-		writeVarName = write->globalVarFullName;
+	writeVarName = write->globalName;
 
 	expr w = z3_ctx.constant(writeVarName.c_str(), varType);
 	return r == w;
@@ -1705,8 +1666,8 @@ bool Encode::readFromInitFormula(Event * read, expr& ret) {
 		type = type->getPointerElementType();
 	}
 	const z3::sort varType(llvmTy_to_z3Ty(type));
-	expr r = z3_ctx.constant(read->globalVarFullName.c_str(), varType);
-	string globalVar = read->varName;
+	expr r = z3_ctx.constant(read->globalName.c_str(), varType);
+	string globalVar = read->name;
 	std::map<std::string, llvm::Constant*>::iterator tempIt =
 			trace->useful_global_variable_initializer.find(globalVar);
 	if (tempIt == trace->useful_global_variable_initializer.end())
@@ -1719,26 +1680,10 @@ bool Encode::readFromInitFormula(Event * read, expr& ret) {
 
 expr Encode::taintReadFromWriteFormula(Event * read, Event * write, string var) {
 
-	string strr = read->globalVarFullName + "_tag";
+	string strr = read->globalName + "_tag";
 	expr r = z3_ctx.bool_const(strr.c_str());
 	string writeVarName = "";
-	if (write->globalVarFullName == "" && !write->implicitGlobalVar.empty()) {
-		for (unsigned i = 0; i < write->implicitGlobalVar.size(); i++) {
-			if (strncmp(var.c_str(), write->implicitGlobalVar[i].c_str(),
-					var.size()) == 0) {
-#if FORMULA_DEBUG
-				cerr << "Event name : " << write->eventName << "\n";
-				cerr<< "rw : " << var.c_str() << "---"
-//						<< it->first.c_str()
-						<< "\n";
-#endif
-				writeVarName = write->implicitGlobalVar[i];
-				break;
-			}
-
-		}
-	} else
-		writeVarName = write->globalVarFullName;
+	writeVarName = write->globalName;
 	string str = writeVarName + "_tag";
 	expr w = z3_ctx.bool_const(str.c_str());
 	return r == w;
@@ -1747,9 +1692,9 @@ expr Encode::taintReadFromWriteFormula(Event * read, Event * write, string var) 
 
 bool Encode::taintReadFromInitFormula(Event * read, expr& ret) {
 
-	string strr = read->globalVarFullName + "_tag";
+	string strr = read->globalName + "_tag";
 	expr r = z3_ctx.bool_const(strr.c_str());
-	string globalVar = read->varName;
+	string globalVar = read->name;
 	std::map<std::string, llvm::Constant*>::iterator tempIt =
 			trace->global_variable_initializer.find(globalVar);
 	if (tempIt == trace->global_variable_initializer.end())
@@ -2046,7 +1991,7 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 			cerr << "global var read:" << read->first << "\n";
 			for (unsigned i = 0; i < read->second.size(); i++) {
 				cerr << read->second[i]->eventName << "---"
-						<< read->second[i]->globalVarFullName << "\n";
+						<< read->second[i]->globalName << "\n";
 			}
 		}
 		write = trace->allWriteSet.begin();
@@ -2054,7 +1999,7 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 			cerr << "global var write:" << write->first << "\n";
 			for (unsigned i = 0; i < write->second.size(); i++) {
 				cerr << write->second[i]->eventName << "---"
-						<< write->second[i]->globalVarFullName << "\n";
+						<< write->second[i]->globalName << "\n";
 			}
 		}
 	}
@@ -2084,8 +2029,8 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 							mayBeRead.push_back(iw->second[i]);
 					}
 				}
-				if (currentRead->latestWrite != NULL) {
-					mayBeRead.push_back(currentRead->latestWrite);
+				if (currentRead->latestWriteEventInSameThread != NULL) {
+					mayBeRead.push_back(currentRead->latestWriteEventInSameThread);
 				} else {
 					//if this read don't have the corresponding write, it may use from Initialization operation.
 					//so, build the formula constrainting this read uses from Initialization operation
@@ -2162,7 +2107,7 @@ void Encode::buildTaintMatchFormula(solver z3_solver_tm) {
 		} else {
 //			std::cerr << "not find : " << ir->first << "\n";
 			for (unsigned k = 0; k < ir->second.size(); k++) {
-				std::string varName = ir->second[k]->globalVarFullName + "_tag";
+				std::string varName = ir->second[k]->globalName + "_tag";
 		//		cerr << "varName : " << varName << "\n";
 				expr lhs = z3_ctx.bool_const(varName.c_str());
 				expr rhs = z3_ctx.bool_val(false);

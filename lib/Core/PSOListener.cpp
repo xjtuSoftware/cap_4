@@ -197,9 +197,9 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 		//store all call arg
 		if (!item->isFunctionWithSourceCode) {
 			unsigned numArgs = cs.arg_size();
-			item->value.reserve(numArgs);
+			item->instParameter.reserve(numArgs);
 			for (unsigned j = 0; j < numArgs; ++j) {
-				item->value.push_back(executor->eval(ki, j + 1, thread).value);
+				item->instParameter.push_back(executor->eval(ki, j + 1, thread).value);
 			}
 		}
 //		std::cerr<<"call name : "<< f->getName().str().c_str() <<"\n";
@@ -250,8 +250,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				uint64_t key = realAddress->getZExtValue();
 				if (executor->isGlobalMO(pthreadmo)) {
 					item->isGlobal = true;
-				} else {
-					item->isLocal = true;
 				}
 				string varName = createVarName(pthreadmo->id, pthreadAddress, item->isGlobal);
 				string varFullName;
@@ -260,8 +258,8 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					varFullName = createGlobalVarFullName(varName, loadTime,
 							false);
 				}
-				item->globalVarFullName = varFullName;
-				item->varName = varName;
+				item->globalName = varFullName;
+				item->name = varName;
 			}
 		} else if (f->getName().str() == "pthread_join") {
 			CallInst* calli = dyn_cast<CallInst>(inst);
@@ -300,7 +298,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 						false);
 				trace->insertLockOrUnlock(thread->threadId, mutexName, lock,
 						true);
-				item->mutexName = mutexName;
 			} else {
 				assert(0 && "mutex not exist");
 			}
@@ -311,7 +308,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				const MemoryObject* mo = op.first;
 				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertWait(condName, item, lock);
-				item->condName = condName;
 			} else {
 				assert(0 && "cond not exist");
 			}
@@ -328,7 +324,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				const MemoryObject* mo = op.first;
 				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertSignal(condName, item);
-				item->condName = condName;
 			} else {
 				assert(0 && "cond not exist");
 			}
@@ -345,7 +340,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				const MemoryObject* mo = op.first;
 				string condName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertSignal(condName, item);
-				item->condName = condName;
 			} else {
 				assert(0 && "cond not exist");
 			}
@@ -363,7 +357,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				string mutexName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertLockOrUnlock(thread->threadId, mutexName, item,
 						true);
-				item->mutexName = mutexName;
 			} else {
 				assert(0 && "mutex not exist");
 			}
@@ -376,7 +369,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				string mutexName = createVarName(mo->id, param, executor->isGlobalMO(mo));
 				trace->insertLockOrUnlock(thread->threadId, mutexName, item,
 						false);
-				item->mutexName = mutexName;
 			} else {
 				assert(0 && "mutex not exist");
 			}
@@ -465,8 +457,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					const MemoryObject *mo = op.first;
 					if (executor->isGlobalMO(mo)) {
 						item->isGlobal = true;
-					} else {
-						item->isLocal = true;
 					}
 					//					if (mo->isGlobal) {
 					//						insertGlobalVariable(address, inst->getOperand(1)->getType()->getPointerElementType());
@@ -483,8 +473,8 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 						}
 
 					}
-					item->globalVarFullName = varFullName;
-					item->varName = varName;
+					item->globalName = varFullName;
+					item->name = varName;
 				}
 			}
 		} else if (kmodule->kleeFunctions.find(f)
@@ -523,33 +513,29 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				++it) {
 			ref<Expr> index = executor->eval(ki, it->first, thread).value;
 //			std::cerr << "kgepi->index : " << index << std::endl;
-			item->value.push_back(index);
+			item->instParameter.push_back(index);
 		}
 		if (kgepi->offset) {
-			item->value.push_back(ConstantExpr::create(kgepi->offset, 64));
+			item->instParameter.push_back(ConstantExpr::create(kgepi->offset, 64));
 		}
-		item->isConditionIns = true;
-		item->condition = true;
+		item->isConditionInst = true;
+		item->brCondition = true;
 		Type* pointedTy =
 				gp->getPointerOperand()->getType()->getPointerElementType();
 		switch (pointedTy->getTypeID()) {
 		case Type::ArrayTyID: {
 			//只处理索引值是变量的getElementPtr属性，因为索引值是常量时其访问的元素不会随线程交织变化
 			if (inst->getOperand(2)->getValueID() != Value::ConstantIntVal) {
-				uint64_t num = pointedTy->getArrayNumElements();
-				uint64_t elementBitWidth =
-						executor->kmodule->targetData->getTypeSizeInBits(
-								pointedTy->getArrayElementType());
-				Expr* expr = executor->eval(ki, 0, thread).value.get();
-				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(expr);
-				uint64_t base = cexpr->getZExtValue();
-				expr = executor->eval(ki, 2, thread).value.get();
-				cexpr = dyn_cast<ConstantExpr>(expr);
-				uint64_t selectedIndex = cexpr->getZExtValue();
-				VectorInfo* vectorInfo = new VectorInfo(base, elementBitWidth,
-						num, selectedIndex);
-				item->vectorInfo = vectorInfo;
-				getElementPtrRecord.insert(std::make_pair(inst, vectorInfo));
+//				uint64_t num = pointedTy->getArrayNumElements();
+//				uint64_t elementBitWidth =
+//						executor->kmodule->targetData->getTypeSizeInBits(
+//								pointedTy->getArrayElementType());
+//				Expr* expr = executor->eval(ki, 0, thread).value.get();
+//				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(expr);
+//				uint64_t base = cexpr->getZExtValue();
+//				expr = executor->eval(ki, 2, thread).value.get();
+//				cexpr = dyn_cast<ConstantExpr>(expr);
+//				uint64_t selectedIndex = cexpr->getZExtValue();
 			}
 			break;
 		}
@@ -583,13 +569,8 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					const MemoryObject* mo = op.first;
 					uint64_t elementNum = mo->size / (elementBitWidth / 8);
 					if (elementNum > 1) {
-						uint64_t selectedIndex = (startAddress - mo->address)
-								/ (elementBitWidth / 8);
-						VectorInfo* vectorInfo = new VectorInfo(mo->address,
-								elementBitWidth, elementNum, selectedIndex);
-						item->vectorInfo = vectorInfo;
-						getElementPtrRecord.insert(
-								std::make_pair(inst, vectorInfo));
+//						uint64_t selectedIndex = (startAddress - mo->address)
+//								/ (elementBitWidth / 8);
 					}
 				} else {
 					inst->dump();
@@ -624,13 +605,13 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	case Instruction::Br: {
 		BranchInst *bi = dyn_cast<BranchInst>(inst);
 		if (!bi->isUnconditional()) {
-			item->isConditionIns = true;
+			item->isConditionInst = true;
 			ref<Expr> param = executor->eval(ki, 0, thread).value;
 			ConstantExpr* condition = dyn_cast<ConstantExpr>(param);
 			if (condition->isTrue()) {
-				item->condition = true;
+				item->brCondition = true;
 			} else {
-				item->condition = false;
+				item->brCondition = false;
 			}
 		}
 		break;
@@ -659,8 +640,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 //						if(mo->isArg){
 //							item->isArg = 1;
 //						}
-					} else {
-						item->isLocal = true;
 					}
 					//					if (mo->isGlobal) {
 					//						insertGlobalVariable(address, inst->getOperand(0)->getType()->getPointerElementType());
@@ -673,8 +652,8 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 						varFullName = createGlobalVarFullName(varName, loadTime,
 								false);
 					}
-					item->globalVarFullName = varFullName;
-					item->varName = varName;
+					item->globalName = varFullName;
+					item->name = varName;
 
 #if PTR
 					if (item->isGlobal) {
@@ -686,13 +665,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					if (inst->getOperand(0)->getValueID()
 							== Value::InstructionVal
 									+ Instruction::GetElementPtr) {
-						Instruction* i = dyn_cast<Instruction>(
-								inst->getOperand(0));
-						map<Instruction*, VectorInfo*>::iterator gi =
-								getElementPtrRecord.find(i);
-						if (gi != getElementPtrRecord.end()) {
-							item->vectorInfo = gi->second;
-						}
+
 					}
 					//					if (item->vectorInfo) {
 					//						vector<uint64_t> v = item->vectorInfo->getAllPossibleAddress();
@@ -716,7 +689,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
 	case Instruction::Store: {
 		ref<Expr> value = executor->eval(ki, 0, thread).value;
-		item->value.push_back(value);
+		item->instParameter.push_back(value);
 		ref<Expr> address = executor->eval(ki, 1, thread).value;
 		ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
 		if (realAddress) {
@@ -727,8 +700,6 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				const MemoryObject *mo = op.first;
 				if (executor->isGlobalMO(mo)) {
 					item->isGlobal = true;
-				} else {
-					item->isLocal = true;
 				}
 				//					if (mo->isGlobal) {
 				//						insertGlobalVariable(address, inst->getOperand(1)->getType()->getPointerElementType());
@@ -740,23 +711,14 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 					varFullName = createGlobalVarFullName(varName, storeTime,
 							true);
 				}
-				item->globalVarFullName = varFullName;
-				item->varName = varName;
+				item->globalName = varFullName;
+				item->name = varName;
 #if PTR
 				if (item->isGlobal) {
 #else
 				if (!inst->getOperand(0)->getType()->isPointerTy() && item->isGlobal) {
 #endif
 					trace->insertWriteSet(varName, item);
-				}
-				if (inst->getOperand(1)->getValueID()
-						== Value::InstructionVal + Instruction::GetElementPtr) {
-					Instruction* i = dyn_cast<Instruction>(inst->getOperand(1));
-					map<Instruction*, VectorInfo*>::iterator gi =
-							getElementPtrRecord.find(i);
-					if (gi != getElementPtrRecord.end()) {
-						item->vectorInfo = gi->second;
-					}
 				}
 				//					if (item->vectorInfo) {
 				//						vector<uint64_t> v = item->vectorInfo->getAllPossibleAddress();
@@ -779,9 +741,9 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	case Instruction::Switch: {
 //		SwitchInst *si = cast<SwitchInst>(inst);
 		ref<Expr> cond = executor->eval(ki, 0, thread).value;
-		item->value.push_back(cond);
-		item->isConditionIns = true;
-		item->condition = true;
+		item->instParameter.push_back(cond);
+		item->isConditionInst = true;
+		item->brCondition = true;
 		break;
 	}
 
@@ -856,10 +818,7 @@ void PSOListener::instructionExecuted(ExecutionState &state, KInstruction *ki) {
 		}
 
 		case Instruction::Call: {
-//			Constant* returnValue = handleFunctionReturnValue(state, ki);
-//			if (returnValue) {
-//			}
-			handleExternalFunction(state, ki);
+
 			break;
 		}
 
@@ -1192,7 +1151,6 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 					executor->isGlobalMO(destmo));
 			if (executor->isGlobalMO(destmo)) {
 				unsigned storeTime = getStoreTime(destaddress + i);
-				trace->insertWriteSet(name, lastEvent);
 
 				name = createGlobalVarFullName(name, storeTime, true);
 
@@ -1202,7 +1160,6 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 			cerr << "Event name : " << lastEvent->eventName << "\n";
 			cerr<<"name : "<<name<<std::endl;
 #endif
-			lastEvent->implicitGlobalVar.push_back(name);
 			//cerr << "address = " << name << "value = " << ((ConstantInt*)constant)->getSExtValue() << endl;
 			//判断是否是字符串的末尾
 			if (cexpr->getZExtValue() == 0) {
@@ -1265,11 +1222,9 @@ void PSOListener::analyzeInputValue(uint64_t& address, ObjectPair& op,
 		unsigned storeTime = getStoreTime(address);
 		address += type->getPrimitiveSizeInBits() / 8;
 		if (executor->isGlobalMO(mo)) {
-			trace->insertWriteSet(variableName, lastEvent);
 			variableName = createGlobalVarFullName(variableName, storeTime,
 					true);
 		}
-		lastEvent->implicitGlobalVar.push_back(variableName);
 
 //		if (constant->getType()->isIntegerTy()) {
 //			cerr << variableName << " " << ((ConstantInt*)constant)->getSExtValue() << endl;

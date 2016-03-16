@@ -8,99 +8,48 @@
 #ifndef EVENT_H_
 #define EVENT_H_
 
-#include "klee/Internal/Module/KInstruction.h"
+#include <llvm/IR/Function.h>
 #include <string>
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/Constant.h"
-#include "klee/Expr.h"
-#include <z3++.h>
-#include <map>
+#include <vector>
 
-using namespace z3;
-//using namespace std;
+#include "../../include/klee/Expr.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/util/Ref.h"
+
 namespace klee {
 
-class VectorInfo {
-public:
-	uint64_t base;
-	uint64_t elementBitWidth;
-	uint64_t size;
-	uint64_t selectedIndex;
-	uint64_t selectedAddress;
-
-	VectorInfo(uint64_t base, uint64_t elementBitWidth, uint64_t size,
-			uint64_t selectedIndex) {
-		this->base = base;
-		this->elementBitWidth = elementBitWidth;
-		this->size = size;
-		this->selectedIndex = selectedIndex;
-		this->selectedAddress = base + selectedIndex * elementBitWidth / 8;
-	}
-
-	std::vector<uint64_t> getAllPossibleAddress() {
-		std::vector<uint64_t> addresses(size - 1);
-		unsigned index = 0;
-		for (unsigned i = 0; i < size; i++) {
-			uint64_t address = base + i * elementBitWidth / 8;
-			if (address != selectedAddress) {
-				addresses[index++] = address;
-			}
-		}
-		return addresses;
-	}
-};
-
 class Event {
-public:
-	enum EventType {
-		NORMAL, //normal event, which participates in the encode and has associated inst
-		IGNORE, //ignore event, which does not participate in the encode
-		VIRTUAL //virtual event, which has no associated inst
-	};
-public:
-	unsigned threadId; //threadID
-	unsigned eventId; //eventID
-	unsigned threadEventId;
-	std::string eventName; //eventName
-	KInstruction* inst; //associated kinst
-	std::string varName; //name of global variable
-	std::string globalVarFullName; //globalVarName + the read / write sequence
-	EventType eventType;
-	Event * latestWrite; //the latest write event in the same thread
-	bool isGlobal; // is global variable  load, store, call strcpy in these three instruction this attribute will be assigned
-	bool usefulGlobal;
-	bool isLocal; // is local variable load, store, call strcpy in these three instruction this attribute will be assigned
-	bool isConditionIns; // is this event associated with a Br which has two targets
-	bool condition; // Br's condition
-	bool isFunctionWithSourceCode; // only use by call, whether the called function is defined by user
-	VectorInfo* vectorInfo; // element address of accessed array
-	llvm::Function* calledFunction; //set for called function. all callinst use it.@14.12.02
-	std::vector<std::string> implicitGlobalVar; // function's input variable
-	std::string mutexName; // access mutex
-	std::string condName; //access condition;
-	bool isIgnore; //whether ignore this event when detecting
-	std::vector<unsigned> vectorClock;
+	public:
+		enum EventType {
+			NORMAL, //which participates in the encode and has associated inst
+			IGNORE, //which does not participate in the encode
+			VIRTUAL //which has no associated inst
+		};
+	public:
+		unsigned threadId;
+		unsigned eventId;
+		unsigned threadEventId;
+		std::string eventName;
+		KInstruction* inst;
+		std::string name; //name of load or store variable
+		std::string globalName; //globalVarName + the read / write sequence
+		EventType eventType;
+		Event * latestWriteEventInSameThread;
+		bool isGlobal; // is global variable  load, store, call strcpy in these three instruction this attribute will be assigned
+		bool isEventRelatedToBranch;
+		bool isConditionInst; // is this event associated with a Br which has two targets
+		bool brCondition; // Br's condition
+		bool isFunctionWithSourceCode; // only use by call, whether the called function is defined by user
+		llvm::Function* calledFunction; //set for called function. all callinst use it.@14.12.02
+		std::vector<unsigned> vectorClock;
+		std::vector<ref<klee::Expr> > instParameter;
+		std::vector<ref<klee::Expr> > relatedSymbolicExpr;
 
-
-	//2015.7.8 hy
-//	bool isArg;
-	std::vector<ref<klee::Expr> > value;
-	// arg of call / index and offset of getelemenptr / cond of switch
-
-	std::vector<ref<klee::Expr> > relatedSymbolicExpr;
-	// relation of store
-
-
-
-	Event();
-	Event(unsigned threadId, unsigned eventId, std::string eventName,
-			KInstruction* inst, std::string globalVarName,
-			std::string globalVarFullName, EventType eventType);
-	virtual ~Event();
-	std::string toString();
-	llvm::Constant* getAttribute(unsigned index);
-	void setAttribute(unsigned index, llvm::Constant* value);
-	void addAttribute(llvm::Constant* value);
+		Event();
+		Event(unsigned threadId, unsigned eventId, std::string eventName, KInstruction* inst, std::string globalVarName,
+				std::string globalVarFullName, EventType eventType);
+		virtual ~Event();
+		std::string toString();
 
 };
 

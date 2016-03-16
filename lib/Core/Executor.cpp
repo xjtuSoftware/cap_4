@@ -4779,7 +4779,7 @@ void Executor::printInstrcution(ExecutionState &state, KInstruction* ki) {
 		Event* event = *prefix->current();
 		ref<Expr> param = eval(ki, 0, state.currentThread).value;
 		ConstantExpr* condition = dyn_cast<ConstantExpr>(param);
-		if (condition->getAPValue().getBoolValue() != event->condition) {
+		if (condition->getAPValue().getBoolValue() != event->brCondition) {
 			cerr << "\n前缀已被取反\n";
 		} else {
 			cerr << "\n前缀未被取反\n";
