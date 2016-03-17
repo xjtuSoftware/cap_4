@@ -48,7 +48,7 @@ void DTAM::DTAMParallel() {
 			DTAMPoint *point = new DTAMPoint(globalVarFullName, (*itt)->vectorClock);
 			for (std::vector<ref<klee::Expr> >::iterator ittt = (*itt)->relatedSymbolicExpr.begin(), ieee =
 					(*itt)->relatedSymbolicExpr.end(); ittt != ieee; ittt++) {
-				std::string value = FilterSymbolicExpr::getFullName(*ittt);
+				std::string value = FilterSymbolicExpr::getGlobalName(*ittt);
 				point->affectedPoint.push_back(allRead[value]);
 				allRead[value]->affectingPoint.push_back(point);
 			}
@@ -175,7 +175,7 @@ void DTAM::dtam() {
 		std::string name = (*it);
 		runtimeData->allDTAMParallelMap.insert(trace->getAssemblyLine(name));
 		trace->DTAMParallelMap.insert(trace->getAssemblyLine(name));
-		potentialTaint.insert(filter.getVarName(name));
+		potentialTaint.insert(filter.getName(name));
 	}
 	runtimeData->DTAMParallelMap.push_back(trace->DTAMParallelMap.size());
 	runtimeData->DTAMParallel.push_back(trace->DTAMParallel.size());

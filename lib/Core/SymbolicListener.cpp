@@ -103,7 +103,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 		case Instruction::Load: {
 			ref<Expr> address = executor->eval(ki, 0, thread).value;
 			if (address->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(address)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(address)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "load symbolic print");
 				}
@@ -114,7 +114,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 		case Instruction::Store: {
 			ref<Expr> address = executor->eval(ki, 1, thread).value;
 			if (address->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(address)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(address)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "store address is symbolic");
 				}
@@ -145,7 +145,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 					if (value->getKind() == Expr::Constant) {
 
 					} else if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
-						ref<Expr> svalue = symbolicMap[filter.getFullName(value)];
+						ref<Expr> svalue = symbolicMap[filter.getGlobalName(value)];
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store value is symbolic");
 						} else if (id == Type::PointerTyID && value->getKind() == Expr::Read) {
@@ -170,7 +170,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				//会丢失指针的一些关系约束，但是不影响。
 				if (id == Type::PointerTyID && PTR) {
 					if (value->getKind() == Expr::Concat){
-						ref<Expr> svalue = symbolicMap[filter.getFullName(value)];
+						ref<Expr> svalue = symbolicMap[filter.getGlobalName(value)];
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store pointer is symbolic");
 						}
@@ -247,7 +247,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 			Function *f = (*currentEvent)->calledFunction;
 			ref<Expr> function = executor->eval(ki, 0, thread).value;
 			if (function->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(function)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(function)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "call function is symbolic");
 				}
@@ -274,7 +274,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						if (value->getKind() == Expr::Constant) {
 
 						} else if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
-							ref<Expr> svalue = symbolicMap[filter.getFullName(value)];
+							ref<Expr> svalue = symbolicMap[filter.getGlobalName(value)];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
 							} else if (id == Type::PointerTyID && value->getKind() == Expr::Read) {
@@ -307,7 +307,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 			KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
 			ref<Expr> base = executor->eval(ki, 0, thread).value;
 			if (base->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(base)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(base)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}
@@ -361,7 +361,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 //			Expr::Width iType = executor->getWidthForLLVMType(ci->getType());
 			ref<Expr> arg = executor->eval(ki, 0, thread).value;
 			if (arg->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(arg)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(arg)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}

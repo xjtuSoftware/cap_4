@@ -62,8 +62,8 @@ public:
 	std::vector<ref<klee::Expr> > rwSymbolicExpr;
 	std::vector<ref<klee::Expr> > brSymbolicExpr;
 	std::vector<ref<klee::Expr> > assertSymbolicExpr;
-	std::vector<ref<klee::Expr> > kQueryExpr;
-	std::vector<ref<klee::Expr> > usefulkQueryExpr;
+	std::vector<ref<klee::Expr> > pathCondition;
+	std::vector<ref<klee::Expr> > pathConditionRelatedToBranch;
 	std::vector<std::set<std::string>* > brRelatedSymbolicExpr;
 	std::vector<std::set<std::string>* > assertRelatedSymbolicExpr;
 	std::set<std::string> RelatedSymbolicExpr;
@@ -147,8 +147,8 @@ public:
 	std::map<std::string, std::vector<Event *> > allWriteSet;
 	std::map<std::string, std::vector<Event *> > readSet; //key--global variable, value--the whole events that read global vars.
 	std::map<std::string, std::vector<Event *> > writeSet;
-	std::map<std::string, std::vector<Event *> > usefulReadSet;
-	std::map<std::string, std::vector<Event *> > usefulWriteSet;
+	std::map<std::string, std::vector<Event *> > readSetRelatedToBranch;
+	std::map<std::string, std::vector<Event *> > writeSetRelatedToBranch;
 
 	//锁操作集合，以lock/unlock为对收集-->生成同步语义约束
 	std::map<std::string, std::vector<LockPair *> > all_lock_unlock; //key--mutex（锁名，一个地址就ok，每个锁全局必唯一）, value--the whole lock/unlock pairs with respect to one mutex
@@ -161,7 +161,7 @@ public:
 
 	//全局变量初始值
 	std::map<std::string, llvm::Constant*> global_variable_initializer;
-	std::map<std::string, llvm::Constant*> useful_global_variable_initializer;
+	std::map<std::string, llvm::Constant*> global_variable_initializer_RelatedToBranch;
 	//全局变量最终值-只记录使用的全局变量
 	std::map<std::string, llvm::Constant*> global_variable_final;
 	//输出语句printf产生的变量值

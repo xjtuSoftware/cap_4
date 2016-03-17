@@ -99,7 +99,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 			Function *f = (*currentEvent)->calledFunction;
 			ref<Expr> function = executor->eval(ki, 0, thread).value;
 			if (function->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(function)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(function)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "call function is symbolic");
 				}
@@ -124,7 +124,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 
 						} else if (value->getKind() == Expr::Concat
 								|| value->getKind() == Expr::Read) {
-							ref<Expr> svalue = symbolicMap[filter.getFullName(
+							ref<Expr> svalue = symbolicMap[filter.getGlobalName(
 									value)];
 							if (svalue->getKind() != Expr::Constant) {
 								assert(0 && "store value is symbolic");
@@ -149,7 +149,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 							}
 							bool isTaint = value->isTaint;
 							std::vector<ref<klee::Expr> > relatedSymbolicExpr;
-							filter.resolveTaintExpr(value, &relatedSymbolicExpr, &isTaint);
+							filter.resolveTaintExpr(value, relatedSymbolicExpr, isTaint);
 							if(isTaint) {
 								svalue->isTaint = true;
 							}
@@ -171,7 +171,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 
 			ref<Expr> address = executor->eval(ki, 0, thread).value;
 			if (address->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(address)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(address)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "load symbolic print");
 				}
@@ -183,7 +183,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 		case Instruction::Store: {
 			ref<Expr> address = executor->eval(ki, 1, thread).value;
 			if (address->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(address)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(address)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "store address is symbolic");
 				}
@@ -194,7 +194,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 //			cerr << "value : " << value << "\n";
 			bool isTaint = value->isTaint;
 			std::vector<ref<klee::Expr> >* relatedSymbolicExpr = &((*currentEvent)->relatedSymbolicExpr);
-			filter.resolveTaintExpr(value, relatedSymbolicExpr, &isTaint);
+			filter.resolveTaintExpr(value, (*currentEvent)->relatedSymbolicExpr, isTaint);
 //			cerr << "relatedSymbolicExpr" << "\n";
 //			for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
 //					it != relatedSymbolicExpr->end(); it++) {
@@ -246,7 +246,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					ref<Expr> temp = ConstantExpr::create(0, size);
 					for (std::vector<ref<klee::Expr> >::iterator it = relatedSymbolicExpr->begin();
 							it != relatedSymbolicExpr->end(); it++) {
-						string varFullName = filter.getFullName(*it);
+						string varFullName = filter.getGlobalName(*it);
 						ref<Expr> orExpr = manualMakeTaintSymbolic(state, varFullName, size);
 						temp = OrExpr::create(temp, orExpr);
 					}
@@ -259,7 +259,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 					} else if (value->getKind() == Expr::Concat
 							|| value->getKind() == Expr::Read) {
 						ref<Expr> svalue =
-								symbolicMap[filter.getFullName(value)];
+								symbolicMap[filter.getGlobalName(value)];
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store value is symbolic");
 						} else if (id == Type::PointerTyID
@@ -294,7 +294,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 				if (id == Type::PointerTyID && PTR) {
 					if (value->getKind() == Expr::Concat) {
 						ref<Expr> svalue =
-								symbolicMap[filter.getFullName(value)];
+								symbolicMap[filter.getGlobalName(value)];
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store pointer is symbolic");
 						}
@@ -324,7 +324,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 			KGEPInstruction *kgepi = static_cast<KGEPInstruction*>(ki);
 			ref<Expr> base = executor->eval(ki, 0, thread).value;
 			if (base->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(base)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(base)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}
@@ -355,7 +355,7 @@ void TaintListener::executeInstruction(ExecutionState &state,
 		case Instruction::PtrToInt: {
 			ref<Expr> arg = executor->eval(ki, 0, thread).value;
 			if (arg->getKind() == Expr::Concat) {
-				ref<Expr> value = symbolicMap[filter.getFullName(arg)];
+				ref<Expr> value = symbolicMap[filter.getGlobalName(arg)];
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}

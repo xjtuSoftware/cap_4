@@ -327,7 +327,7 @@ void Encode::check_if() {
 			std::string varName;
 			unsigned int totalRwExpr = rwFormula.size();
 			for (unsigned int j = 0; j < totalRwExpr; j++){
-				varName = filter.getVarName(rwSymbolicExpr[j]->getKid(1));
+				varName = filter.getName(rwSymbolicExpr[j]->getKid(1));
 				if (RelatedSymbolicExpr.find(varName) == RelatedSymbolicExpr.end()){
 					Event* temp = rwFormula[j].first;
 					expr currIf = z3_ctx.int_const(curr->eventName.c_str());
@@ -895,9 +895,9 @@ void Encode::buildInitValueFormula(solver z3_solver_init) {
 	cerr << "\nGlobal var initial size: " << trace->global_variable_initializer.size() << "\n";
 #endif
 	std::map<std::string, llvm::Constant*>::iterator gvi =
-			trace->useful_global_variable_initializer.begin();
+			trace->global_variable_initializer_RelatedToBranch.begin();
 
-	for (; gvi != trace->useful_global_variable_initializer.end(); gvi++) {
+	for (; gvi != trace->global_variable_initializer_RelatedToBranch.end(); gvi++) {
 		//bitwidth may introduce bug!!!
 		const Type *type = gvi->second->getType();
 		const z3::sort varType(llvmTy_to_z3Ty(type));
@@ -911,7 +911,7 @@ void Encode::buildInitValueFormula(solver z3_solver_init) {
 #endif
 	}
 	//statics
-	formulaNum += trace->useful_global_variable_initializer.size();
+	formulaNum += trace->global_variable_initializer_RelatedToBranch.size();
 }
 
 void Encode::buildOutputFormula() {
@@ -1014,9 +1014,9 @@ void Encode::buildPathCondition(solver z3_solver_pc) {
 #endif
 
 	KQuery2Z3 *kq = new KQuery2Z3(z3_ctx);;
-	unsigned int totalExpr = trace->usefulkQueryExpr.size();
+	unsigned int totalExpr = trace->pathConditionRelatedToBranch.size();
 	for (unsigned int i = 0; i < totalExpr; i++) {
-		z3::expr temp = kq->getZ3Expr(trace->usefulkQueryExpr[i]);
+		z3::expr temp = kq->getZ3Expr(trace->pathConditionRelatedToBranch[i]);
 		z3_solver_pc.add(temp);
 #if FORMULA_DEBUG
 	cerr << temp << "\n";
@@ -1514,16 +1514,16 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 //debug
 //print out all the read and write insts of global vars.
 	if (false) {
-		read = trace->usefulReadSet.begin();
-		for (; read != trace->usefulReadSet.end(); read++) {
+		read = trace->readSetRelatedToBranch.begin();
+		for (; read != trace->readSetRelatedToBranch.end(); read++) {
 			cerr << "global var read:" << read->first << "\n";
 			for (unsigned i = 0; i < read->second.size(); i++) {
 				cerr << read->second[i]->eventName << "---"
 						<< read->second[i]->globalName << "\n";
 			}
 		}
-		write = trace->usefulWriteSet.begin();
-		for (; write != trace->usefulWriteSet.end(); write++) {
+		write = trace->writeSetRelatedToBranch.begin();
+		for (; write != trace->writeSetRelatedToBranch.end(); write++) {
 			cerr << "global var write:" << write->first << "\n";
 			for (unsigned i = 0; i < write->second.size(); i++) {
 				cerr << write->second[i]->eventName << "---"
@@ -1533,11 +1533,11 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 	}
 //debug
 
-	map<string, vector<Event *> >::iterator ir = trace->usefulReadSet.begin(); //key--variable,
+	map<string, vector<Event *> >::iterator ir = trace->readSetRelatedToBranch.begin(); //key--variable,
 	Event *currentRead;
 	Event *currentWrite;
-	for (; ir != trace->usefulReadSet.end(); ir++) {
-		map<string, vector<Event *> >::iterator iw = trace->usefulWriteSet.find(
+	for (; ir != trace->readSetRelatedToBranch.end(); ir++) {
+		map<string, vector<Event *> >::iterator iw = trace->writeSetRelatedToBranch.find(
 				ir->first);
 		//maybe use the initial value from Initialization.@2014.4.16
 		//if(iw == writeSet.end())
@@ -1550,7 +1550,7 @@ void Encode::buildReadWriteFormula(solver z3_solver_rw) {
 			//compute the write set that may be used by currentRead;
 			vector<Event *> mayBeRead;
 			unsigned currentWriteThreadId;
-			if (iw != trace->usefulWriteSet.end()) {
+			if (iw != trace->writeSetRelatedToBranch.end()) {
 				for (unsigned i = 0; i < iw->second.size(); i++) {
 					if (iw->second[i]->threadId == currentRead->threadId)
 						continue;
@@ -1666,8 +1666,8 @@ bool Encode::readFromInitFormula(Event * read, expr& ret) {
 	expr r = z3_ctx.constant(read->globalName.c_str(), varType);
 	string globalVar = read->name;
 	std::map<std::string, llvm::Constant*>::iterator tempIt =
-			trace->useful_global_variable_initializer.find(globalVar);
-	if (tempIt == trace->useful_global_variable_initializer.end())
+			trace->global_variable_initializer_RelatedToBranch.find(globalVar);
+	if (tempIt == trace->global_variable_initializer_RelatedToBranch.end())
 		return false;
 	string str = tempIt->first + "_Init";
 	expr w = z3_ctx.constant(str.c_str(), varType);
@@ -2121,7 +2121,7 @@ void Encode::buildTaintProgatationFormula(solver z3_solver_tp) {
 		ref<klee::Expr> value = *it;
 //		cerr << "value : " << value << "\n";
 		ref<klee::Expr> right = value->getKid(1);
-		std::string varName = filter.getFullName(right);
+		std::string varName = filter.getGlobalName(right);
 //		cerr << "varName : " << varName << "\n";
 		std::string varTaintName = varName + "_tag";
 		if (initTaintSymbolicExpr.find(varName) != initTaintSymbolicExpr.end()) {
@@ -2147,7 +2147,7 @@ expr Encode::makeOrTaint(ref<klee::Expr> value) {
 	expr res = z3_ctx.bool_val(false);
 	if (value->getKind() == Expr::Concat || value->getKind() == Expr::Read) {
 
-		std::string varName = filter.getFullName(value) + "_tag";
+		std::string varName = filter.getGlobalName(value) + "_tag";
 //		cerr << "makeOrTaint varName : " << varName << "\n";
 		res = z3_ctx.bool_const(varName.c_str());
 	} else if (value->getKind() == Expr::Constant) {
