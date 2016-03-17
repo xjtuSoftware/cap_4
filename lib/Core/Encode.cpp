@@ -5,59 +5,41 @@
  *      Author: xdzhang
  */
 
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/Internal/Module/InstructionInfoTable.h"
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Attributes.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/IntrinsicInst.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/IR/TypeBuilder.h"
-#else
-#include "llvm/Attributes.h"
-#include "llvm/BasicBlock.h"
-#include "llvm/Constants.h"
-#include "llvm/Function.h"
-#include "llvm/Instructions.h"
-#include "llvm/IntrinsicInst.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Module.h"
-#if LLVM_VERSION_CODE <= LLVM_VERSION(3, 1)
-#include "llvm/Target/TargetData.h"
-#else
-#include "llvm/DataLayout.h"
-#include "llvm/TypeBuilder.h"
-#endif
-#endif
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include <map>
-#include <vector>
-#include <sstream>
-#include <assert.h>
-#include <sys/time.h>
-#include <fstream>
-#include <pthread.h>
-#include <z3.h>
-#include <z3_api.h>
-#include <iostream>
-#include <iomanip>
-
-#include "Prefix.h"
 #include "Encode.h"
-#include "Common.h"
-#include "KQuery2Z3.h"
+
+#include <assert.h>
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
+#include <llvm/Support/Casting.h>
+#include <llvm/Support/raw_ostream.h>
+#include <sys/time.h>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <set>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "../../include/klee/Expr.h"
+#include "../../include/klee/Internal/Module/InstructionInfoTable.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/util/Ref.h"
+#include "Prefix.h"
 
 #define FORMULA_DEBUG 0
 #define BRANCH_INFO 1
@@ -84,13 +66,6 @@ void Encode::buildAllFormula() {
 	buildPartialOrderFormula(z3_solver);
 	buildReadWriteFormula(z3_solver);
 	buildSynchronizeFormula(z3_solver);
-	//debug: test satisfy of the model
-//	check_result result = z3_solver.check();
-//	if (result != z3::sat) {
-//		assert(0 && "failed");
-//	}
-//	else assert(0 && "success");
-	//
 }
 
 void Encode::buildPTSFormula() {
@@ -103,11 +78,8 @@ void Encode::buildPTSFormula() {
 	buildPartialOrderFormula(z3_taint_solver);
 	buildSynchronizeFormula(z3_taint_solver);
 
-	cerr << "\nbuildInitTaintFormula\n";
 	buildInitTaintFormula(z3_taint_solver);
-	cerr << "\nbuildTaintMatchFormula\n";
 	buildTaintMatchFormula(z3_taint_solver);
-	cerr << "\nbuildTaintProgatationFormula\n";
 	buildTaintProgatationFormula(z3_taint_solver);
 }
 
