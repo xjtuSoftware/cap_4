@@ -8,12 +8,13 @@
 #ifndef CONDMANAGER_H_
 #define CONDMANAGER_H_
 
+#include <iostream>
 #include <map>
 #include <string>
+#include <vector>
+
 #include "Condition.h"
 #include "MutexManager.h"
-#include "Scheduler.h"
-#include "WaitParam.h"
 #include "Prefix.h"
 
 namespace klee {
@@ -24,7 +25,6 @@ private:
 	std::map<std::string, Condition*> condPool;
 	MutexManager* mutexManager;
 	unsigned nextConditionId;
-	Executor* executor;
 
 public:
 	CondManager();
@@ -37,7 +37,6 @@ public:
 	bool addCondition(std::string condName, std::string& errorMsg, Prefix* prefix);
 	Condition* getCondition(std::string condName);
 	void setMutexManager(MutexManager* mutexManager) {this->mutexManager = mutexManager;}
-	void setExecutor(Executor* executor) {this->executor = executor;}
 	void clear();
 	void print(std::ostream &out);
 	unsigned getNextConditionId();

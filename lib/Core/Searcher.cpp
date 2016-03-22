@@ -13,7 +13,6 @@
 
 #include "CoreStats.h"
 #include "Executor.h"
-#include "PTree.h"
 #include "StatsTracker.h"
 
 #include "klee/ExecutionState.h"
@@ -199,7 +198,7 @@ double WeightedRandomSearcher::getWeight(ExecutionState *es) {
     return inv * inv;
   }
   case CPInstCount: {
-    StackFrame &sf = es->getNextThread()->stack.back();
+    StackFrame &sf = es->getNextThread()->stackk.back();
     uint64_t count = sf.callPathNode->statistics.getValue(stats::instructions);
     double inv = 1. / std::max((uint64_t) 1, count);
     return inv;
@@ -210,7 +209,7 @@ double WeightedRandomSearcher::getWeight(ExecutionState *es) {
   case MinDistToUncovered: {
 	Thread* nextThread = es->getNextThread();
     uint64_t md2u = computeMinDistToUncovered(nextThread->pc,
-                                              nextThread->stack.back().minDistToUncoveredOnReturn);
+                                              nextThread->stackk.back().minDistToUncoveredOnReturn);
 
     double invMD2U = 1. / (md2u ? md2u : 10000);
     if (type==CoveringNew) {

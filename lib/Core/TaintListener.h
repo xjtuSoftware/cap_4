@@ -42,6 +42,8 @@ private:
 	//此Map更新有两处，Load、某些函数。
 	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
 	std::map<std::string, ref<Expr> > symbolicMap;
+	AddressSpace addressSpace;
+	std::map<unsigned, Thread::stack_ty> stack;
 
 private:
 

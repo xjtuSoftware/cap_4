@@ -15,11 +15,6 @@
 #ifndef KLEE_EXECUTOR_H
 #define KLEE_EXECUTOR_H
 
-#define SIZEOFMUTEX 40
-#define SIZEOFCOND 48
-#define BIT_WIDTH 64
-#define POINT_BIT_WIDTH 64
-
 #include <vector>
 #include <string>
 #include <map>
@@ -33,15 +28,16 @@
 #include "klee/Internal/Module/KInstruction.h"
 #include "klee/Internal/Module/KModule.h"
 
-#include "BitcodeListener.h"
 #include "ListenerService.h"
-#include "PSOListener.h"
-#include "MutexManager.h"
-#include "CondManager.h"
-#include "BarrierManager.h"
 #include "Transfer.h"
 #include "ThreadScheduler.h"
 #include "Prefix.h"
+
+
+#define SIZEOFMUTEX 40
+#define SIZEOFCOND 48
+#define BIT_WIDTH 64
+#define POINT_BIT_WIDTH 64
 
 struct KTest;
 
@@ -54,11 +50,7 @@ class ConstantExpr;
 class Function;
 class GlobalValue;
 class Instruction;
-#if LLVM_VERSION_CODE <= LLVM_VERSION(3, 1)
-class TargetData;
-#else
 class DataLayout;
-#endif
 class Twine;
 class Value;
 }
@@ -203,16 +195,6 @@ private:
 
 	ListenerService* listenerService;
 
-	MutexManager mutexManager;
-
-	CondManager condManager;
-
-	BarrierManager barrierManager;
-
-	//std::set<ExecutionState*> allThread; // all threads
-
-	std::map<unsigned, std::vector<unsigned> > joinRecord; // store the relation of join, key->threadId, value->a list of threads that are waiting key's termination
-
 	bool isFinished; // whether the verification is finished
 
 	bool isPrefixFinished;
@@ -336,15 +318,15 @@ private:
 	ref<Expr> replaceReadWithSymbolic(ExecutionState &state, ref<Expr> e);
 
 	Cell& getArgumentCell(Thread *thread, KFunction *kf, unsigned index) {
-		return thread->stack.back().locals[kf->getArgRegister(index)];
+		return thread->stackk.back().locals[kf->getArgRegister(index)];
 	}
 
 	Cell& getDestCell(Thread *thread, KInstruction *target) {
-		return thread->stack.back().locals[target->dest];
+		return thread->stackk.back().locals[target->dest];
 	}
 
 	void setDestCell(Thread *thread, KInstruction *target, ref<Expr> value) {
-		thread->stack.back().locals[target->dest].value = value;
+		thread->stackk.back().locals[target->dest].value = value;
 	}
 
 	void bindLocal(KInstruction *target, Thread *state, ref<Expr> value);

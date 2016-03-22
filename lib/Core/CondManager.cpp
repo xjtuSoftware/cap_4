@@ -6,11 +6,14 @@
  */
 
 #include "CondManager.h"
-#include "WaitParam.h"
-#include "Transfer.h"
-#include "Executor.h"
 
-#include <iostream>
+#include <iterator>
+#include <utility>
+
+#include "CondScheduler.h"
+#include "Mutex.h"
+#include "Transfer.h"
+#include "WaitParam.h"
 
 using namespace::std;
 
@@ -114,11 +117,11 @@ Condition* CondManager::getCondition(string condName) {
 }
 
 CondManager::CondManager()
-	: nextConditionId(1), executor(NULL) {
+	: nextConditionId(1) {
 	this->mutexManager = NULL;
 }
 
-CondManager::CondManager(MutexManager* _mutexManaget) : nextConditionId(1), executor(NULL) {
+CondManager::CondManager(MutexManager* _mutexManaget) : nextConditionId(1) {
 	this->mutexManager = _mutexManaget;
 }
 

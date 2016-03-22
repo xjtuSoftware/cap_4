@@ -6,8 +6,15 @@
  */
 
 #include "ThreadScheduler.h"
-#include "Executor.h"
-#include "klee/ExecutionState.h"
+
+#include <llvm/IR/Instruction.h>
+#include <cassert>
+#include <string>
+
+#include "../../include/klee/ExecutionState.h"
+#include "../../include/klee/Internal/Module/InstructionInfoTable.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+
 #define MAXINST 100
 
 using namespace::std;

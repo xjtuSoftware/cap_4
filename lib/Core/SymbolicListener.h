@@ -8,12 +8,20 @@
 #ifndef LIB_CORE_SYMBOLICLISTENER_H_
 #define LIB_CORE_SYMBOLICLISTENER_H_
 
-#include "Executor.h"
-#include "RuntimeDataManager.h"
+#include <map>
+#include <string>
+#include <vector>
+
+#include "../../include/klee/ExecutionState.h"
+#include "../../include/klee/Expr.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/util/Ref.h"
 #include "BitcodeListener.h"
+#include "Event.h"
+#include "Executor.h"
 #include "FilterSymbolicExpr.h"
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/ExecutionState.h"
+#include "RuntimeDataManager.h"
+#include "Thread.h"
 
 namespace llvm {
 	class Type;
@@ -25,7 +33,7 @@ namespace klee {
 	class SymbolicListener: public BitcodeListener {
 		public:
 			SymbolicListener(Executor* executor, RuntimeDataManager* rdManager);
-			~SymbolicListener();
+			virtual ~SymbolicListener();
 
 			void beforeRunMethodAsMain(ExecutionState &initialState);
 			void executeInstruction(ExecutionState &state, KInstruction *ki);
@@ -46,6 +54,7 @@ namespace klee {
 			std::map<std::string, std::vector<unsigned> > assertMap;
 			std::map<std::string, ref<Expr> > symbolicMap;
 			bool kleeBr;
+			StackType stackAndAddressSpace;
 
 		private:
 

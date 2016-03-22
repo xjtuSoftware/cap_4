@@ -7,36 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "klee/ExecutionState.h"
+#include "../../include/klee/ExecutionState.h"
 
-#include "klee/Internal/Module/Cell.h"
-#include "klee/Internal/Module/InstructionInfoTable.h"
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/Internal/Module/KModule.h"
-
-#include "klee/Expr.h"
-
-#include "ThreadScheduler.h"
-#include "Memory.h"
-
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Metadata.h"
-#include "llvm/DebugInfo.h"
-#else
-#include "llvm/Function.h"
-#include "llvm/Metadata.h"
-#include "llvm/Analysis/DebugInfo.h"
-#endif
-
-#include "llvm/Support/CommandLine.h"
-
-#include <iostream>
-#include <iomanip>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/DebugInfo.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/Support/CommandLine.h>
 #include <cassert>
-#include <map>
-#include <set>
-#include <stdarg.h>
+
+#include "../../include/klee/Internal/ADT/ImmutableMap.h"
+#include "../../include/klee/Internal/ADT/ImmutableTree.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/Internal/Module/KModule.h"
+#include "ThreadScheduler.h"
 
 using namespace llvm;
 using namespace klee;
@@ -97,13 +83,14 @@ ExecutionState::ExecutionState(KFunction *kf)
     weight(1),
     instsSinceCovNew(0),
     coveredNew(false),
-    forkDisabled(false)
-    //ptreeNode(0)
-	{
+    forkDisabled(false),
+	nextThreadId(1),
+	mutexManager(),
+	condManager() {
 
+	condManager.setMutexManager(&mutexManager);
 	threadScheduler = getThreadSchedulerByType(ThreadScheduler::FIFS);
-	//threadScheduler = getThreadSchedulerByType(ThreadScheduler::Preemptive);
-	Thread* thread = new Thread(Thread::getNextThreadId(), NULL, &addressSpace, kf);
+	Thread* thread = new Thread(getNextThreadId(), NULL, &addressSpace, kf);
 	threadList.addThread(thread);
 	threadScheduler->addItem(thread);
 	currentThread = thread;
@@ -117,13 +104,14 @@ ExecutionState::ExecutionState(KFunction *kf, Prefix* prefix)
     weight(1),
     instsSinceCovNew(0),
     coveredNew(false),
-    forkDisabled(false)
-    //ptreeNode(0)
-	{
+    forkDisabled(false),
+	nextThreadId(1),
+	mutexManager(),
+	condManager() {
 
+	condManager.setMutexManager(&mutexManager);
 	threadScheduler = new GuidedThreadScheduler(this, ThreadScheduler::FIFS, prefix);
-	//threadScheduler = new GuidedThreadScheduler(this, ThreadScheduler::Preemptive, prefix);
-	Thread* thread = new Thread(Thread::getNextThreadId(), NULL, &addressSpace, kf);
+	Thread* thread = new Thread(getNextThreadId(), NULL, &addressSpace, kf);
 	threadList.addThread(thread);
 	threadScheduler->addItem(thread);
 	currentThread = thread;
@@ -133,9 +121,7 @@ ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : fakeState(true),
     underConstrained(false),
     constraints(assumptions),
-    queryCost(0.)
-    //ptreeNode(0)
-	{
+    queryCost(0.) {
 }
 
 ExecutionState::~ExecutionState() {
@@ -468,17 +454,23 @@ bool ExecutionState::examineAllThreadFinalState() {
 	return isAllThreadFinished;
 }
 
+unsigned ExecutionState::getNextThreadId() {
+	unsigned threadId = nextThreadId++;
+	assert (nextThreadId <= 6 && "vector clock 只有5个");
+	return threadId;
+}
+
 Thread* ExecutionState::createThread(KFunction *kf) {
-	Thread* newThread = new Thread(Thread::getNextThreadId(), currentThread, &addressSpace, kf);
+	Thread* newThread = new Thread(getNextThreadId(), currentThread, &addressSpace, kf);
 	threadList.addThread(newThread);
 	threadScheduler->addItem(newThread);
 	return newThread;
 }
 
 Thread* ExecutionState::createThread(KFunction *kf, unsigned threadId) {
-	if (threadId >= Thread::nextThreadId) {
-		Thread::nextThreadId = threadId + 1;
-		assert (Thread::nextThreadId <= 6 && "vector clock 只有5个");
+	if (threadId >= nextThreadId) {
+		nextThreadId = threadId + 1;
+		assert (nextThreadId <= 6 && "vector clock 只有5个");
 	}
 	Thread* newThread = new Thread(threadId, currentThread, &addressSpace, kf);
 	threadList.addThread(newThread);

@@ -7,7 +7,6 @@
 
 #include "PSOListener.h"
 #include "klee/Expr.h"
-#include "PTree.h"
 #include "Trace.h"
 #include "Transfer.h"
 
@@ -67,61 +66,11 @@ void PSOListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 			MemoryObject *mo = executor->globalObjects.find(i)->second;
 			Constant* initializer = i->getInitializer();
 			uint64_t address = mo->address;
-//			cerr << i->getName().str() << " " << initializer->getType()->getTypeID() << endl;
 			handleInitializer(initializer, mo, address);
 		}
 	}
 
-	//获取argc，argv
-//	StackFrame sf = initialState.currentThread->stack.back();
-//	Function* main = sf.kf->function;
-//	Function::arg_iterator ai = main->arg_begin(), ae = main->arg_end();
-//	if (ai != ae) {
-//		// handle argc
-//		ref<Expr> value = sf.locals[0].value;
-//		ConstantExpr* cexpr = dyn_cast < ConstantExpr > (value);
-//		uint64_t argc = cexpr->getZExtValue();
-////		trace->insertArgc(argc);
-//		//ConstantInt* ci = ConstantInt::get(type, argc, true);
-//		if (++ai != ae) {
-//			//handle argv  ignore env
-//			value = sf.locals[1].value;
-//			cexpr = dyn_cast < ConstantExpr > (value);
-//			ObjectPair op;
-//			executor->getMemoryObject(op, initialState, cexpr);
-//			const MemoryObject* mo = op.first;
-//			const ObjectState* os = op.second;
-//			unsigned ptrBytes = Context::get().getPointerWidth() / 8;
-//			IntegerType* chTy =
-//					dyn_cast < IntegerType
-//							> (ai->getType()->getPointerElementType()->getPointerElementType());
-//			for (unsigned i = 0; i < argc; i++) {
-//				uint64_t address = mo->address + i * ptrBytes;
-//				ref<Expr> offset = mo->getOffsetExpr(
-//						ConstantExpr::create(address,
-//								Context::get().getPointerWidth()));
-//				ref<Expr> result = os->read(offset,
-//						Context::get().getPointerWidth());
-//				cexpr = dyn_cast < ConstantExpr > (result.get());
-//				ObjectPair arg;
-//				executor->getMemoryObject(arg, initialState, cexpr);
-//				const MemoryObject* argMo = arg.first;
-//				const ObjectState* argOs = arg.second;
-//				for (unsigned j = 0; j < argMo->size; j++) {
-//					ref<Expr> ch = argOs->read(j, 8);
-//					cexpr = dyn_cast < ConstantExpr > (ch.get());
-//					string name = createVarName(argMo->id, argMo->address + j,
-//							executor->isGlobalMO(argMo));
-//					ConstantInt* ci = ConstantInt::get(chTy,
-//							cexpr->getZExtValue(), true);
-//					trace->insertGlobalVariableInitializer(name, ci);
-//				}
-//
-//			}
-//		}
-//	}
 
-	//
 	unsigned traceNum = executor->executionNum;
 	cerr << endl;
 	cerr << "************************************************************************\n";
@@ -133,9 +82,6 @@ void PSOListener::beforeRunMethodAsMain(ExecutionState &initialState) {
 	}
 	cerr << "************************************************************************\n";
 	cerr << endl;
-#if PRINT_RUNTIMEINFO
-	printPrefix();
-#endif
 }
 
 //指令调用消息响应函数，在指令解释执行前被调用
@@ -1315,12 +1261,12 @@ unsigned PSOListener::getStoreTimeForTaint(uint64_t address) {
 //获取函数指针指向的Function
 Function * PSOListener::getPointeredFunction(ExecutionState & state,
 		KInstruction * ki) {
-	StackFrame* sf = &state.currentThread->stack.back();
+	StackFrame* sf = &state.currentThread->stackk.back();
 	//外部函数调用不会创建函数栈,其它函数调用会创建,此处需判断之前Call指令的执行是否已经创建了新的函数栈,
 	//如果是,则倒数第二个元素是Call指令所在的函数栈.
 	if (!ki->inst->getParent()->getParent()->getName().equals(
 			sf->kf->function->getName())) {
-		sf = &state.currentThread->stack[state.currentThread->stack.size() - 2];
+		sf = &state.currentThread->stackk[state.currentThread->stackk.size() - 2];
 	}
 	int vnumber = ki->operands[0];
 	ref<Expr> result;

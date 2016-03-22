@@ -11,7 +11,6 @@
 
 #include "CoreStats.h"
 #include "Executor.h"
-#include "PTree.h"
 #include "StatsTracker.h"
 #include "ExecutorTimerInfo.h"
 
@@ -140,12 +139,12 @@ void Executor::processTimers(ExecutionState *current,
           ExecutionState *es = *it;
           *os << "(" << es << ",";
           *os << "[";
-          Thread::stack_ty::iterator next = es->currentThread->stack.begin();
+          Thread::stack_ty::iterator next = es->currentThread->stackk.begin();
           ++next;
-          for (Thread::stack_ty::iterator sfIt = es->currentThread->stack.begin(),
-                 sf_ie = es->currentThread->stack.end(); sfIt != sf_ie; ++sfIt) {
+          for (Thread::stack_ty::iterator sfIt = es->currentThread->stackk.begin(),
+                 sf_ie = es->currentThread->stackk.end(); sfIt != sf_ie; ++sfIt) {
             *os << "('" << sfIt->kf->function->getName().str() << "',";
-            if (next == es->currentThread->stack.end()) {
+            if (next == es->currentThread->stackk.end()) {
               *os << es->currentThread->prevPC->info->line << "), ";
             } else {
               *os << next->caller->info->line << "), ";
@@ -154,7 +153,7 @@ void Executor::processTimers(ExecutionState *current,
           }
           *os << "], ";
 
-          StackFrame &sf = es->currentThread->stack.back();
+          StackFrame &sf = es->currentThread->stackk.back();
           uint64_t md2u = computeMinDistToUncovered(es->currentThread->pc,
                                                     sf.minDistToUncoveredOnReturn);
           uint64_t icnt = theStatisticManager->getIndexedValue(stats::instructions,

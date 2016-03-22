@@ -8,11 +8,10 @@
 #ifndef BITCODELISTENER_H_
 #define BITCODELISTENER_H_
 
-#include "klee/Internal/Module/KInstruction.h"
+#include <map>
+
 #include "klee/ExecutionState.h"
-#include "Mutex.h"
-#include "Condition.h"
-#include "Thread.h"
+#include "klee/Internal/Module/KInstruction.h"
 
 namespace klee {
 
@@ -23,6 +22,7 @@ public:
 		PSOListenerKind,
 		SymbolicListenerKind,
 		TaintListenerKind,
+		InputListenerKind,
 		DebugerListenerKind
 	};
 
@@ -33,8 +33,6 @@ public:
 	virtual void executeInstruction(ExecutionState &state, KInstruction *ki) = 0;
 	virtual void instructionExecuted(ExecutionState &state, KInstruction *ki) = 0;
 	virtual void afterRunMethodAsMain() = 0;
-//	virtual void createMutex(ExecutionState &state, Mutex* mutex) = 0;
-//	virtual void createCondition(ExecutionState &state, Condition* condition) = 0;
 	virtual void createThread(ExecutionState &state, Thread* thread) = 0;
 	virtual void executionFailed(ExecutionState &state, KInstruction *ki) = 0;
 

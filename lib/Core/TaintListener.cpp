@@ -7,7 +7,6 @@
 
 #include "TaintListener.h"
 #include "klee/Expr.h"
-#include "PTree.h"
 #include "Trace.h"
 #include "Transfer.h"
 #include "AddressSpace.h"
@@ -21,18 +20,11 @@
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/DebugInfo.h"
-#else
-#include "llvm/Metadata.h"
-#include "llvm/Module.h"
-#include "llvm/IntrinsicInst.h"
-#include "llvm/Analysis/DebugInfo.h"
-#endif
 
 using namespace std;
 using namespace llvm;

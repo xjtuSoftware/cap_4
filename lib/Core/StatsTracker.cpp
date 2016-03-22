@@ -276,7 +276,7 @@ void StatsTracker::stepInstruction(ExecutionState &es) {
 
     Instruction *inst = es.currentThread->pc->inst;
     const InstructionInfo &ii = *es.currentThread->pc->info;
-    StackFrame &sf = es.currentThread->stack.back();
+    StackFrame &sf = es.currentThread->stackk.back();
     theStatisticManager->setIndex(ii.id);
     if (UseCallPaths)
       theStatisticManager->setContext(&sf.callPathNode->statistics);
@@ -306,7 +306,7 @@ void StatsTracker::stepInstruction(ExecutionState &es) {
 /* Should be called _after_ the es->pushFrame() */
 void StatsTracker::framePushed(ExecutionState &es, StackFrame *parentFrame) {
   if (OutputIStats) {
-    StackFrame &sf = es.currentThread->stack.back();
+    StackFrame &sf = es.currentThread->stackk.back();
 
     if (UseCallPaths) {
       CallPathNode *parent = parentFrame ? parentFrame->callPathNode : 0;
@@ -429,7 +429,7 @@ void StatsTracker::updateStateStatistics(uint64_t addend) {
     	const InstructionInfo &ii = *thread->pc->info;
     	    theStatisticManager->incrementIndexedValue(stats::states, ii.id, addend);
     	    if (UseCallPaths)
-    	      thread->stack.back().callPathNode->statistics.incrementValue(stats::states, addend);
+    	      thread->stackk.back().callPathNode->statistics.incrementValue(stats::states, addend);
     }
   }
 }
@@ -843,12 +843,12 @@ void StatsTracker::computeReachableUncovered() {
     uint64_t currentFrameMinDist = 0;
     for (ThreadList::iterator ti = es->threadList.begin(), te = es->threadList.end(); ti != te; ti++) {
     	Thread* thread = *ti;
-    	for (Thread::stack_ty::iterator sfIt = thread->stack.begin(),
-    	           sf_ie = thread->stack.end(); sfIt != sf_ie; ++sfIt) {
+    	for (Thread::stack_ty::iterator sfIt = thread->stackk.begin(),
+    	           sf_ie = thread->stackk.end(); sfIt != sf_ie; ++sfIt) {
     	      Thread::stack_ty::iterator next = sfIt + 1;
     	      KInstIterator kii;
 
-    	      if (next==thread->stack.end()) {
+    	      if (next==thread->stackk.end()) {
     	        kii = thread->pc;
     	      } else {
     	        kii = next->caller;

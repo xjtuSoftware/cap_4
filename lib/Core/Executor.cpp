@@ -16,7 +16,6 @@
 #include "ImpliedValue.h"
 #include "Memory.h"
 #include "MemoryManager.h"
-#include "PTree.h"
 #include "Searcher.h"
 #include "SeedInfo.h"
 #include "SpecialFunctionHandler.h"
@@ -240,8 +239,6 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 						std::min(MaxCoreSolverTime, MaxInstructionTime) :
 						std::max(MaxCoreSolverTime, MaxInstructionTime)),
 		//ptreeVector(20),
-		mutexManager(),
-		condManager(),
 		isFinished(false),
 		isPrefixFinished(false),
 		prefix(NULL),
@@ -250,9 +247,6 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 		execStatus(SUCCESS) {
 	if (coreSolverTimeout)
 		UseForkedCoreSolver = true;
-	condManager.setMutexManager(&mutexManager);
-	condManager.setExecutor(this);
-	//cerr << &mutexManager << " " << condManager.mutexManager << endl;
 	Solver *coreSolver = NULL;
 
 #ifdef SUPPORT_METASMT
@@ -294,13 +288,8 @@ Executor::Executor(const InterpreterOptions &opts, InterpreterHandler *ih) :
 			interpreterHandler->getOutputFilename(SOLVER_QUERIES_PC_FILE_NAME));
 
 	this->solver = new TimingSolver(solver);
-
 	memory = new MemoryManager();
-
 	listenerService = new ListenerService(this);
-
-//  listener = new SymbolicListener(this);
-//  bitcodeListeners.push_back(listener);
 }
 
 const Module *Executor::setModule(llvm::Module *module,
@@ -717,7 +706,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 		StatisticManager &sm = *theStatisticManager;
 		//perhaps have error
 		//ylc
-		CallPathNode *cpn = current.currentThread->stack.back().callPathNode;
+		CallPathNode *cpn = current.currentThread->stackk.back().callPathNode;
 		if ((MaxStaticForkPct < 1.
 				&& sm.getIndexedValue(stats::forks, sm.getIndex())
 						> stats::forks * MaxStaticForkPct)
@@ -1055,7 +1044,7 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
 		return kmodule->constantTable[index];
 	} else {
 		unsigned index = vnumber;
-		StackFrame &sf = thread->stack.back();
+		StackFrame &sf = thread->stackk.back();
 		return sf.locals[index];
 	}
 
@@ -1077,7 +1066,7 @@ void Executor::evalAgainst(KInstruction *ki, unsigned index, Thread* thread,
 		kmodule->constantTable[index].value = value;
 	} else {
 		unsigned index = vnumber;
-		StackFrame &sf = thread->stack.back();
+		StackFrame &sf = thread->stackk.back();
 //    cerr<<"vnumber : "<<vnumber<<std::endl;
 		sf.locals[index].value = value;
 	}
@@ -1247,7 +1236,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 			// va_arg is handled by caller and intrinsic lowering, see comment for
 			// ExecutionState::varargs
 		case Intrinsic::vastart: {
-			StackFrame &sf = thread->stack.back();
+			StackFrame &sf = thread->stackk.back();
 			assert(
 					sf.varargs
 							&& "vastart called in function with no vararg object");
@@ -1310,7 +1299,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 
 		if (statsTracker)
 			statsTracker->framePushed(state,
-					&thread->stack[thread->stack.size() - 2]);
+					&thread->stackk[thread->stackk.size() - 2]);
 
 		// TODO: support "byval" parameter attribute
 		// TODO: support zeroext, signext, sret attributes
@@ -1333,7 +1322,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 				return;
 			}
 
-			StackFrame &sf = thread->stack.back();
+			StackFrame &sf = thread->stackk.back();
 			unsigned size = 0;
 			for (unsigned i = funcArgs; i < callingArgs; i++) {
 				// FIXME: This is really specific to the architecture, not the pointer
@@ -1394,7 +1383,7 @@ void Executor::transferToBasicBlock(BasicBlock *dst, BasicBlock *src,
 
 	// XXX this lookup has to go ?
 	Thread* thread = state.currentThread;
-	KFunction *kf = thread->stack.back().kf;
+	KFunction *kf = thread->stackk.back().kf;
 	unsigned entry = kf->basicBlockEntry[dst];
 	thread->pc = &kf->instructions[entry];
 	if (thread->pc->inst->getOpcode() == Instruction::PHI) {
@@ -1480,7 +1469,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	// Control flow
 	case Instruction::Ret: {
 		ReturnInst *ri = cast<ReturnInst>(i);
-		KInstIterator kcaller = thread->stack.back().caller;
+		KInstIterator kcaller = thread->stackk.back().caller;
 		Instruction *caller = kcaller ? kcaller->inst : 0;
 		bool isVoidReturn = (ri->getNumOperands() == 0);
 		ref<Expr> result = ConstantExpr::alloc(0, Expr::Bool);
@@ -1489,12 +1478,12 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			result = eval(ki, 0, thread).value;
 		}
 
-		if (thread->stack.size() <= 1) {
+		if (thread->stackk.size() <= 1) {
 			assert(!caller && "caller set on initial stack frame");
 			//recover join thread
-			map<unsigned, vector<unsigned> >::iterator ji = joinRecord.find(
+			map<unsigned, vector<unsigned> >::iterator ji = state.joinRecord.find(
 					thread->threadId);
-			if (ji != joinRecord.end()) {
+			if (ji != state.joinRecord.end()) {
 				for (vector<unsigned>::iterator bi = ji->second.begin(), be =
 						ji->second.end(); bi != be; bi++) {
 					state.swapInThread(*bi, true, false);
@@ -1568,29 +1557,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 
 		break;
 	}
-#if LLVM_VERSION_CODE < LLVM_VERSION(3, 1)
-		case Instruction::Unwind: {
-			for (;;) {
-				KInstruction *kcaller = thread->stack.back().caller;
-				state.popFrame();
-
-				if (statsTracker)
-				statsTracker->framePopped(state);
-
-				if (state.stack.empty()) {
-					terminateStateOnExecError(state, "unwind from initial stack frame");
-					break;
-				} else {
-					Instruction *caller = kcaller->inst;
-					if (InvokeInst *ii = dyn_cast<InvokeInst>(caller)) {
-						transferToBasicBlock(ii->getUnwindDest(), caller->getParent(), state);
-						break;
-					}
-				}
-			}
-			break;
-		}
-#endif
 	case Instruction::Br: {
 		BranchInst *bi = cast<BranchInst>(i);
 		if (bi->isUnconditional()) {
@@ -1607,7 +1573,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			// requires that we still be in the context of the branch
 			// instruction (it reuses its statistic id). Should be cleaned
 			// up with convenient instruction specific data.
-			if (statsTracker && thread->stack.back().kf->trackCoverage)
+			if (statsTracker && thread->stackk.back().kf->trackCoverage)
 				statsTracker->markBranchVisited(branches.first,
 						branches.second);
 
@@ -1631,31 +1597,16 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			// switch to an internal rep.
 			LLVM_TYPE_Q llvm::IntegerType *Ty = cast<IntegerType>(
 					si->getCondition()->getType());
-#if CONSTANT
-			std::cerr << "instruction of switch start\n";
-#endif
 			ConstantInt *ci = ConstantInt::get(Ty, CE->getZExtValue());
-#if CONSTANT
-			std::cerr << "instruction of switch end\n";
-#endif
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
 			unsigned index = si->findCaseValue(ci).getSuccessorIndex();
-#else
-			unsigned index = si->findCaseValue(ci);
-#endif
 			transferToBasicBlock(si->getSuccessor(index), si->getParent(),
 					state);
 		} else {
 			std::map<BasicBlock*, ref<Expr> > targets;
 			ref<Expr> isDefault = ConstantExpr::alloc(1, Expr::Bool);
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
 			for (SwitchInst::CaseIt i = si->case_begin(), e = si->case_end();
 					i != e; ++i) {
 				ref<Expr> value = evalConstant(i.getCaseValue());
-#else
-				for (unsigned i=1, cases = si->getNumCases(); i<cases; ++i) {
-					ref<Expr> value = evalConstant(si->getCaseValue(i));
-#endif
 				ref<Expr> match = EqExpr::create(cond, value);
 				isDefault = AndExpr::create(isDefault,
 						Expr::createIsZero(match));
@@ -1664,11 +1615,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				assert(success && "FIXME: Unhandled solver failure");
 				(void) success;
 				if (result) {
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
 					BasicBlock *caseSuccessor = i.getCaseSuccessor();
-#else
-					BasicBlock *caseSuccessor = si->getSuccessor(i);
-#endif
 					std::map<BasicBlock*, ref<Expr> >::iterator it =
 							targets.insert(
 									std::make_pair(caseSuccessor,
@@ -2078,7 +2025,6 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	case Instruction::Load: {
 
 		ref<Expr> base = eval(ki, 0, thread).value;
-//		std::cerr<<"base : "<<base<<std::endl;
 		executeMemoryOperation(state, false, base, 0, ki);
 		break;
 	}
@@ -2086,11 +2032,9 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	case Instruction::Store: {
 
 		ref<Expr> base = eval(ki, 1, thread).value;
-//		std::cerr<<"base : "<<base<<std::endl;
-//    base->dump();
 		ref<Expr> value = eval(ki, 0, thread).value;
-//		std::cerr<<"value : "<<value<<std::endl;
 		executeMemoryOperation(state, true, base, value, 0);
+
 		//handle mutex and condition created by malloc
 		Type* valueTy = ki->inst->getOperand(0)->getType();
 		////handle mutex, cond and barrier allocated by malloc
@@ -2912,76 +2856,7 @@ void Executor::run(ExecutionState &initialState) {
 	initTimers();
 
 	states.insert(&initialState);
-
-//  if (usingSeeds) {
-//    std::vector<SeedInfo> &v = seedMap[&initialState];
-//
-//    for (std::vector<KTest*>::const_iterator it = usingSeeds->begin(),
-//           ie = usingSeeds->end(); it != ie; ++it)
-//      v.push_back(SeedInfo(*it));
-//
-//    int lastNumSeeds = usingSeeds->size()+10;
-//    double lastTime, startTime = lastTime = util::getWallTime();
-//    ExecutionState *lastState = 0;
-//    while (!seedMap.empty()) {
-//      if (haltExecution) goto dump;
-//
-//      std::map<ExecutionState*, std::vector<SeedInfo> >::iterator it =
-//        seedMap.upper_bound(lastState);
-//      if (it == seedMap.end())
-//        it = seedMap.begin();
-//      lastState = it->first;
-//      unsigned numSeeds = it->second.size();
-//      ExecutionState &state = *lastState;
-//      //perhaps have error
-//      // ylc
-//      Thread* thread = state.getNextThread();
-//      KInstruction *ki = thread->pc;
-//      stepInstruction(state);
-//
-//      executeInstruction(state, ki);
-//      processTimers(&state, MaxInstructionTime * numSeeds);
-//      updateStates(&state);
-//
-//      if ((stats::instructions % 1000) == 0) {
-//        int numSeeds = 0, numStates = 0;
-//        for (std::map<ExecutionState*, std::vector<SeedInfo> >::iterator
-//               it = seedMap.begin(), ie = seedMap.end();
-//             it != ie; ++it) {
-//          numSeeds += it->second.size();
-//          numStates++;
-//        }
-//        double time = util::getWallTime();
-//        if (SeedTime>0. && time > startTime + SeedTime) {
-//          klee_warning("seed time expired, %d seeds remain over %d states",
-//                       numSeeds, numStates);
-//          break;
-//        } else if (numSeeds<=lastNumSeeds-10 ||
-//                   time >= lastTime+10) {
-//          lastTime = time;
-//          lastNumSeeds = numSeeds;
-//          klee_message("%d seeds remaining over: %d states",
-//                       numSeeds, numStates);
-//        }
-//      }
-//    }
-//
-//    klee_message("seeding done (%d states remain)", (int) states.size());
-//
-//    // XXX total hack, just because I like non uniform better but want
-//    // seed results to be equally weighted.
-//    for (std::set<ExecutionState*>::iterator
-//           it = states.begin(), ie = states.end();
-//         it != ie; ++it) {
-//      (*it)->weight = 1.;
-//    }
-//
-//    if (OnlySeed)
-//      goto dump;
-//  }
-
 	searcher = constructUserSearcher(*this);
-
 	searcher->update(0, states, std::set<ExecutionState*>());
 
 	listenerService->beforeRunMethodAsMain(initialState);
@@ -3005,7 +2880,7 @@ void Executor::run(ExecutionState &initialState) {
 				string errorMsg;
 				bool isBlocked;
 				bool deadlock = false;
-				if (mutexManager.tryToLockForBlockedThread(thread->threadId,
+				if (state.mutexManager.tryToLockForBlockedThread(thread->threadId,
 						isBlocked, errorMsg)) {
 					if (isBlocked) {
 						if (prefix && !prefix->isFinished()) {
@@ -3288,8 +3163,8 @@ const InstructionInfo & Executor::getLastNonKleeInternalInstruction(
 	// unroll the stack of the applications state and find
 	// the last instruction which is not inside a KLEE internal function
 	Thread* thread = state.currentThread;
-	Thread::stack_ty::const_reverse_iterator it = thread->stack.rbegin(), itE =
-			thread->stack.rend();
+	Thread::stack_ty::const_reverse_iterator it = thread->stackk.rbegin(), itE =
+			thread->stackk.rend();
 
 	// don't check beyond the outermost function (i.e. main())
 	itE--;
@@ -3517,7 +3392,7 @@ ObjectState *Executor::bindObjectInState(ExecutionState &state,
 	// on function return.
 
 	if (isLocal)
-		state.currentThread->stack.back().allocas.push_back(mo);
+		state.currentThread->stackk.back().allocas.push_back(mo);
 
 	return os;
 }
@@ -3992,14 +3867,7 @@ void Executor::runFunctionAsMain(Function *f, int argc, char **argv,
 
 	initializeGlobals(*state);
 
-//  processTree = new PTree(state);
-//  ptreeVector[nextThreadId] = processTree;
-//
-//  state->ptreeNode = processTree->root;
 	run(*state);
-
-	//delete processTree;
-	//processTree = 0;
 
 	// hack to clear memory objects
 	delete memory;
@@ -4228,12 +4096,12 @@ unsigned Executor::executePThreadJoin(ExecutionState &state, KInstruction *ki,
 		Thread* joinThread = state.findThreadById(threadId);
 		if (joinThread) {
 			if (!joinThread->isTerminated()) {
-				map<unsigned, vector<unsigned> >::iterator ji = joinRecord.find(
+				map<unsigned, vector<unsigned> >::iterator ji = state.joinRecord.find(
 						threadId);
-				if (ji == joinRecord.end()) {
+				if (ji == state.joinRecord.end()) {
 					vector<unsigned> blockedList;
 					blockedList.push_back(state.currentThread->threadId);
-					joinRecord.insert(make_pair(threadId, blockedList));
+					state.joinRecord.insert(make_pair(threadId, blockedList));
 				} else {
 					ji->second.push_back(state.currentThread->threadId);
 				}
@@ -4266,7 +4134,7 @@ unsigned Executor::executePThreadCondWait(ExecutionState &state,
 	string condName = Transfer::uint64toString(condAddress->getZExtValue());
 	string mutexName = Transfer::uint64toString(mutexAddress->getZExtValue());
 	string errorMsg;
-	bool isSuccess = condManager.wait(condName, mutexName,
+	bool isSuccess = state.condManager.wait(condName, mutexName,
 			state.currentThread->threadId, errorMsg);
 	if (isSuccess) {
 		state.swapOutThread(state.currentThread, true, false, false, false);
@@ -4289,7 +4157,7 @@ unsigned Executor::executePThreadCondSignal(ExecutionState &state,
 	string condName = Transfer::uint64toString(condAddress->getZExtValue());
 	string errorMsg;
 	unsigned releasedThreadId;
-	bool isSuccess = condManager.signal(condName, releasedThreadId, errorMsg);
+	bool isSuccess = state.condManager.signal(condName, releasedThreadId, errorMsg);
 	if (isSuccess) {
 		if (releasedThreadId != 0) {
 			state.swapInThread(releasedThreadId, false, true);
@@ -4324,7 +4192,7 @@ unsigned Executor::executePThreadCondBroadcast(ExecutionState &state,
 	string condName = Transfer::uint64toString(condAddress->getZExtValue());
 	vector<unsigned> threadList;
 	string errorMsg;
-	bool isSuccess = condManager.broadcast(condName, threadList, errorMsg);
+	bool isSuccess = state.condManager.broadcast(condName, threadList, errorMsg);
 	if (isSuccess) {
 		vector<unsigned>::iterator ti, te;
 		vector<bool>::iterator bi;
@@ -4362,7 +4230,7 @@ unsigned Executor::executePThreadMutexLock(ExecutionState &state,
 		string key = Transfer::uint64toString(mutexAddress->getZExtValue());
 		string errorMsg;
 		bool isBlocked;
-		bool isSuccess = mutexManager.lock(key, state.currentThread->threadId,
+		bool isSuccess = state.mutexManager.lock(key, state.currentThread->threadId,
 				isBlocked, errorMsg);
 		if (isSuccess) {
 			if (isBlocked) {
@@ -4388,7 +4256,7 @@ unsigned Executor::executePThreadMutexUnlock(ExecutionState &state,
 	if (mutexAddress) {
 		string key = Transfer::uint64toString(mutexAddress->getZExtValue());
 		string errorMsg;
-		bool isSuccess = mutexManager.unlock(key, errorMsg);
+		bool isSuccess = state.mutexManager.unlock(key, errorMsg);
 		if (!isSuccess) {
 			cerr << errorMsg << endl;
 			assert(0 && "unlock error");
@@ -4415,7 +4283,7 @@ unsigned Executor::executePThreadBarrierInit(ExecutionState &state,
 	string barrierName = Transfer::uint64toString(
 			barrierAddress->getZExtValue());
 	string errorMsg;
-	bool isSuccess = barrierManager.init(barrierName, count->getZExtValue(),
+	bool isSuccess = state.barrierManager.init(barrierName, count->getZExtValue(),
 			errorMsg);
 	if (!isSuccess) {
 		cerr << errorMsg << endl;
@@ -4438,7 +4306,7 @@ unsigned Executor::executePThreadBarrierWait(ExecutionState &state,
 	vector<unsigned> blockedList;
 	bool isReleased = false;
 	string errorMsg;
-	bool isSuccess = barrierManager.wait(barrierName,
+	bool isSuccess = state.barrierManager.wait(barrierName,
 			state.currentThread->threadId, isReleased, blockedList, errorMsg);
 	if (isSuccess) {
 		if (isReleased) {
@@ -4590,20 +4458,20 @@ void Executor::createSpecialElement(ExecutionState& state, Type* type,
 			}
 			if (type->getStructName() == "union.pthread_mutex_t") {
 				string mutexName = Transfer::uint64toString(startAddress);
-				mutexManager.addMutex(mutexName, errorMsg);
+				state.mutexManager.addMutex(mutexName, errorMsg);
 				startAddress += kmodule->targetData->getTypeSizeInBits(type)
 						/ 8;
 			} else if (type->getStructName() == "union.pthread_cond_t") {
 				string condName = Transfer::uint64toString(startAddress);
 				if (prefix) {
-					condManager.addCondition(condName, errorMsg, prefix);
+					state.condManager.addCondition(condName, errorMsg, prefix);
 				} else {
-					condManager.addCondition(condName, errorMsg);
+					state.condManager.addCondition(condName, errorMsg);
 				}
 				startAddress += kmodule->targetData->getTypeSizeInBits(type)
 						/ 8;
 			} else if (type->getStructName() == "union.pthread_barrier_t") {
-				barrierManager.addBarrier(
+				state.barrierManager.addBarrier(
 						Transfer::uint64toString(startAddress), errorMsg);
 				startAddress += kmodule->targetData->getTypeSizeInBits(type)
 						/ 8;
@@ -4674,15 +4542,7 @@ void Executor::runVerification(llvm::Function *f, int argc, char **argv,
 }
 
 void Executor::prepareNextExecution() {
-	mutexManager.clear();
-	condManager.clear();
-	barrierManager.clear();
-	joinRecord.clear();
-	Thread::nextThreadId = 1;
-	for (std::set<ExecutionState*>::const_iterator it = states.begin(), ie =
-			states.end(); it != ie; ++it) {
-		delete *it;
-	}
+
 }
 
 void Executor::getNewPrefix() {
