@@ -387,7 +387,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 	// Control flow
 	case Instruction::Ret: {
 		ReturnInst *ri = cast<ReturnInst>(i);
-		KInstIterator kcaller = thread->stackk.back().caller;
+		KInstIterator kcaller = thread->stack.stack.back().caller;
 		Instruction *caller = kcaller ? kcaller->inst : 0;
 		bool isVoidReturn = (ri->getNumOperands() == 0);
 		ref<Expr> result = ConstantExpr::alloc(0, Expr::Bool);
@@ -396,7 +396,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 			result = eval(ki, 0, thread).value;
 		}
 
-		if (thread->stackk.size() <= 1) {
+		if (thread->stack.stack.size() <= 1) {
 			assert(!caller && "caller set on initial stack frame");
 			//recover join thread
 			map<unsigned, vector<unsigned> >::iterator ji = state.joinRecord.find(
@@ -419,7 +419,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 			state.swapOutThread(thread, false, false, false, true);
 			//terminateStateOnExit(state);
 		} else {
-			thread->popFrame();
+			thread->stack.popFrame();
 
 			if (statsTracker)
 				statsTracker->framePopped(state);

@@ -54,7 +54,8 @@ namespace klee {
 			std::map<std::string, std::vector<unsigned> > assertMap;
 			std::map<std::string, ref<Expr> > symbolicMap;
 			bool kleeBr;
-			StackType stackAndAddressSpace;
+			AddressSpace *addressSpace;
+			StackType stack;
 
 		private:
 

@@ -318,15 +318,15 @@ private:
 	ref<Expr> replaceReadWithSymbolic(ExecutionState &state, ref<Expr> e);
 
 	Cell& getArgumentCell(Thread *thread, KFunction *kf, unsigned index) {
-		return thread->stackk.back().locals[kf->getArgRegister(index)];
+		return thread->stack.stack.back().locals[kf->getArgRegister(index)];
 	}
 
 	Cell& getDestCell(Thread *thread, KInstruction *target) {
-		return thread->stackk.back().locals[target->dest];
+		return thread->stack.stack.back().locals[target->dest];
 	}
 
 	void setDestCell(Thread *thread, KInstruction *target, ref<Expr> value) {
-		thread->stackk.back().locals[target->dest].value = value;
+		thread->stack.stack.back().locals[target->dest].value = value;
 	}
 
 	void bindLocal(KInstruction *target, Thread *state, ref<Expr> value);

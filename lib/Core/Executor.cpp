@@ -706,7 +706,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ref<Expr> condition,
 		StatisticManager &sm = *theStatisticManager;
 		//perhaps have error
 		//ylc
-		CallPathNode *cpn = current.currentThread->stackk.back().callPathNode;
+		CallPathNode *cpn = current.currentThread->stack.stack.back().callPathNode;
 		if ((MaxStaticForkPct < 1.
 				&& sm.getIndexedValue(stats::forks, sm.getIndex())
 						> stats::forks * MaxStaticForkPct)
@@ -1044,7 +1044,7 @@ const Cell& Executor::eval(KInstruction *ki, unsigned index,
 		return kmodule->constantTable[index];
 	} else {
 		unsigned index = vnumber;
-		StackFrame &sf = thread->stackk.back();
+		StackFrame &sf = thread->stack.stack.back();
 		return sf.locals[index];
 	}
 
@@ -1066,7 +1066,7 @@ void Executor::evalAgainst(KInstruction *ki, unsigned index, Thread* thread,
 		kmodule->constantTable[index].value = value;
 	} else {
 		unsigned index = vnumber;
-		StackFrame &sf = thread->stackk.back();
+		StackFrame &sf = thread->stack.stack.back();
 //    cerr<<"vnumber : "<<vnumber<<std::endl;
 		sf.locals[index].value = value;
 	}
@@ -1236,7 +1236,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 			// va_arg is handled by caller and intrinsic lowering, see comment for
 			// ExecutionState::varargs
 		case Intrinsic::vastart: {
-			StackFrame &sf = thread->stackk.back();
+			StackFrame &sf = thread->stack.stack.back();
 			assert(
 					sf.varargs
 							&& "vastart called in function with no vararg object");
@@ -1294,12 +1294,12 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 		// instead of the actual instruction, since we can't make a KInstIterator
 		// from just an instruction (unlike LLVM).
 		KFunction *kf = kmodule->functionMap[f];
-		thread->pushFrame(thread->prevPC, kf);
+		thread->stack.pushFrame(thread->prevPC, kf);
 		thread->pc = kf->instructions;
 
 		if (statsTracker)
 			statsTracker->framePushed(state,
-					&thread->stackk[thread->stackk.size() - 2]);
+					&thread->stack.stack[thread->stack.stack.size() - 2]);
 
 		// TODO: support "byval" parameter attribute
 		// TODO: support zeroext, signext, sret attributes
@@ -1322,7 +1322,7 @@ void Executor::executeCall(ExecutionState &state, KInstruction *ki, Function *f,
 				return;
 			}
 
-			StackFrame &sf = thread->stackk.back();
+			StackFrame &sf = thread->stack.stack.back();
 			unsigned size = 0;
 			for (unsigned i = funcArgs; i < callingArgs; i++) {
 				// FIXME: This is really specific to the architecture, not the pointer
@@ -1383,7 +1383,7 @@ void Executor::transferToBasicBlock(BasicBlock *dst, BasicBlock *src,
 
 	// XXX this lookup has to go ?
 	Thread* thread = state.currentThread;
-	KFunction *kf = thread->stackk.back().kf;
+	KFunction *kf = thread->stack.stack.back().kf;
 	unsigned entry = kf->basicBlockEntry[dst];
 	thread->pc = &kf->instructions[entry];
 	if (thread->pc->inst->getOpcode() == Instruction::PHI) {
@@ -1469,7 +1469,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	// Control flow
 	case Instruction::Ret: {
 		ReturnInst *ri = cast<ReturnInst>(i);
-		KInstIterator kcaller = thread->stackk.back().caller;
+		KInstIterator kcaller = thread->stack.stack.back().caller;
 		Instruction *caller = kcaller ? kcaller->inst : 0;
 		bool isVoidReturn = (ri->getNumOperands() == 0);
 		ref<Expr> result = ConstantExpr::alloc(0, Expr::Bool);
@@ -1478,7 +1478,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			result = eval(ki, 0, thread).value;
 		}
 
-		if (thread->stackk.size() <= 1) {
+		if (thread->stack.stack.size() <= 1) {
 			assert(!caller && "caller set on initial stack frame");
 			//recover join thread
 			map<unsigned, vector<unsigned> >::iterator ji = state.joinRecord.find(
@@ -1501,7 +1501,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			state.swapOutThread(thread, false, false, false, true);
 			//terminateStateOnExit(state);
 		} else {
-			thread->popFrame();
+			thread->stack.popFrame();
 
 			if (statsTracker)
 				statsTracker->framePopped(state);
@@ -1573,7 +1573,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			// requires that we still be in the context of the branch
 			// instruction (it reuses its statistic id). Should be cleaned
 			// up with convenient instruction specific data.
-			if (statsTracker && thread->stackk.back().kf->trackCoverage)
+			if (statsTracker && thread->stack.stack.back().kf->trackCoverage)
 				statsTracker->markBranchVisited(branches.first,
 						branches.second);
 
@@ -3163,8 +3163,8 @@ const InstructionInfo & Executor::getLastNonKleeInternalInstruction(
 	// unroll the stack of the applications state and find
 	// the last instruction which is not inside a KLEE internal function
 	Thread* thread = state.currentThread;
-	Thread::stack_ty::const_reverse_iterator it = thread->stackk.rbegin(), itE =
-			thread->stackk.rend();
+	std::vector<StackFrame>::const_reverse_iterator it = thread->stack.stack.rbegin(), itE =
+			thread->stack.stack.rend();
 
 	// don't check beyond the outermost function (i.e. main())
 	itE--;
@@ -3392,7 +3392,7 @@ ObjectState *Executor::bindObjectInState(ExecutionState &state,
 	// on function return.
 
 	if (isLocal)
-		state.currentThread->stackk.back().allocas.push_back(mo);
+		state.currentThread->stack.stack.back().allocas.push_back(mo);
 
 	return os;
 }
