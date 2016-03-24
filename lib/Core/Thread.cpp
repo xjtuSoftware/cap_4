@@ -27,7 +27,7 @@ Thread::Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpa
 	for(unsigned i = 0; i < 5; i++) {
 		vectorClock.push_back(0);
 	}
-	stack.stack.reserve(10);
+	stack.realStack.reserve(10);
 	stack.pushFrame(0, kf);
 }
 

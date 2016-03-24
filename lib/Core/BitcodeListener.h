@@ -16,27 +16,25 @@
 namespace klee {
 
 class BitcodeListener {
-public:
+	public:
 
-	enum listenerKind {
-		PSOListenerKind,
-		SymbolicListenerKind,
-		TaintListenerKind,
-		InputListenerKind,
-		DebugerListenerKind
-	};
+		enum listenerKind {
+			PSOListenerKind,
+			SymbolicListenerKind,
+			TaintListenerKind,
+			InputListenerKind,
+			DebugerListenerKind
+		};
 
-	listenerKind Kind;
+		listenerKind Kind;
 
-	virtual ~BitcodeListener();
-	virtual void beforeRunMethodAsMain(ExecutionState &initialState) = 0;
-	virtual void executeInstruction(ExecutionState &state, KInstruction *ki) = 0;
-	virtual void instructionExecuted(ExecutionState &state, KInstruction *ki) = 0;
-	virtual void afterRunMethodAsMain() = 0;
-	virtual void createThread(ExecutionState &state, Thread* thread) = 0;
-	virtual void executionFailed(ExecutionState &state, KInstruction *ki) = 0;
-
-private:
+		virtual ~BitcodeListener();
+		virtual void beforeRunMethodAsMain(ExecutionState &initialState) = 0;
+		virtual void executeInstruction(ExecutionState &state, KInstruction *ki) = 0;
+		virtual void instructionExecuted(ExecutionState &state, KInstruction *ki) = 0;
+		virtual void afterRunMethodAsMain() = 0;
+		virtual void createThread(ExecutionState &state, Thread* thread) = 0;
+		virtual void executionFailed(ExecutionState &state, KInstruction *ki) = 0;
 
 };
 

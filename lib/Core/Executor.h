@@ -237,7 +237,7 @@ private:
 	void callExternalFunction(ExecutionState &state, KInstruction *target,
 			llvm::Function *function, std::vector<ref<Expr> > &arguments);
 
-	ObjectState *bindObjectInState(ExecutionState &state,
+	ObjectState *bindObjectInState(StackType &stack,
 			const MemoryObject *mo, bool isLocal, const Array *array = 0);
 
 	/// Resolve a pointer to the memory objects it could point to the
@@ -269,7 +269,7 @@ private:
 	/// done (realloc semantics). The initialized bytes will be the
 	/// minimum of the size of the old and new objects, with remaining
 	/// bytes initialized as specified by zeroMemory.
-	void executeAlloc(ExecutionState &state, ref<Expr> size, bool isLocal,
+	void executeAlloc(ExecutionState &state, StackType &stack, ref<Expr> size, bool isLocal,
 			KInstruction *target, bool zeroMemory = false,
 			const ObjectState *reallocFrom = 0);
 
@@ -286,7 +286,7 @@ private:
 
 	// do address resolution / object binding / out of bounds checking
 	// and perform the operation
-	void executeMemoryOperation(ExecutionState &state, bool isWrite,
+	void executeMemoryOperation(ExecutionState &state, StackType stack, bool isWrite,
 			ref<Expr> address, ref<Expr> value /* undef if read */,
 			KInstruction *target /* undef if write */);
 
@@ -318,18 +318,14 @@ private:
 	ref<Expr> replaceReadWithSymbolic(ExecutionState &state, ref<Expr> e);
 
 	Cell& getArgumentCell(Thread *thread, KFunction *kf, unsigned index) {
-		return thread->stack.stack.back().locals[kf->getArgRegister(index)];
+		return thread->stack.realStack.back().locals[kf->getArgRegister(index)];
 	}
 
-	Cell& getDestCell(Thread *thread, KInstruction *target) {
-		return thread->stack.stack.back().locals[target->dest];
+	Cell& getDestCell(StackType &stack, KInstruction *target) {
+		return stack.realStack.back().locals[target->dest];
 	}
 
-	void setDestCell(Thread *thread, KInstruction *target, ref<Expr> value) {
-		thread->stack.stack.back().locals[target->dest].value = value;
-	}
-
-	void bindLocal(KInstruction *target, Thread *state, ref<Expr> value);
+	void bindLocal(KInstruction *target, StackType &stack, ref<Expr> value);
 	void bindArgument(KFunction *kf, unsigned index, Thread *thread,
 			ref<Expr> value);
 
@@ -517,7 +513,7 @@ public:
 
 	Expr::Width getWidthForLLVMType(LLVM_TYPE_Q llvm::Type *type) const;
 
-	const Cell& eval(KInstruction *ki, unsigned index, Thread *thread) const;
+	const Cell& eval(KInstruction *ki, unsigned index, StackType &stack) const;
 
 	void evalAgainst(KInstruction *ki, unsigned index, Thread* thread,
 			ref<Expr> value);

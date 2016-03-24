@@ -66,7 +66,7 @@ void ListenerService::instructionExecuted(ExecutionState &state,
 		KInstruction *ki) {
 	for (std::vector<BitcodeListener*>::iterator bit = bitcodeListeners.begin(),
 			bie = bitcodeListeners.end(); bit != bie; ++bit) {
-		(*bit)->afterExecuteInstruction(state, ki);
+		(*bit)->instructionExecuted(state, ki);
 	}
 }
 

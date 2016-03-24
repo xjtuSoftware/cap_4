@@ -39,8 +39,6 @@ namespace klee {
 			void executeInstruction(ExecutionState &state, KInstruction *ki);
 			void instructionExecuted(ExecutionState &state, KInstruction *ki);
 			void afterRunMethodAsMain();
-//	void createMutex(ExecutionState &state, Mutex* mutex);
-//	void createCondition(ExecutionState &state, Condition* condition);
 			void createThread(ExecutionState &state, Thread* thread);
 			void executionFailed(ExecutionState &state, KInstruction *ki);
 
@@ -54,8 +52,8 @@ namespace klee {
 			std::map<std::string, std::vector<unsigned> > assertMap;
 			std::map<std::string, ref<Expr> > symbolicMap;
 			bool kleeBr;
-			AddressSpace *addressSpace;
-			StackType stack;
+			AddressSpace addressSpace;
+			std::map<unsigned, StackType > stack;
 
 		private:
 

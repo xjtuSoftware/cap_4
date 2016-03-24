@@ -117,7 +117,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 		Value *fp = cs.getCalledValue();
 		Function *f = executor->getTargetFunction(fp, state);
 		if (!f) {
-			ref<Expr> expr = executor->eval(ki, 0, thread).value;
+			ref<Expr> expr = executor->eval(ki, 0, thread->stack).value;
 			ConstantExpr* constExpr = dyn_cast<ConstantExpr>(expr.get());
 			uint64_t functionPtr = constExpr->getZExtValue();
 			f = (Function*) functionPtr;
@@ -145,13 +145,13 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			unsigned numArgs = cs.arg_size();
 			item->instParameter.reserve(numArgs);
 			for (unsigned j = 0; j < numArgs; ++j) {
-				item->instParameter.push_back(executor->eval(ki, j + 1, thread).value);
+				item->instParameter.push_back(executor->eval(ki, j + 1, thread->stack).value);
 			}
 		}
 //		std::cerr<<"call name : "<< f->getName().str().c_str() <<"\n";
 //		if(f->getName().str() == "open"){
 //			cerr<<f->getName().str()<<"\n";
-//			ref<Expr> Address = executor->eval(ki, 1, thread).value;
+//			ref<Expr> Address = executor->eval(ki, 1, thread->stack).value;
 //			ObjectPair op;
 //			executor->getMemoryObject(op, state, Address);
 //			const ObjectState* destos = op.second;
@@ -178,7 +178,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 //			Function *threadEntrance = executor->getTargetFunction(
 //					threadEntranceFP, state);
 //			if (!threadEntrance) {
-//				ref<Expr> param = executor->eval(ki, 3, thread).value;
+//				ref<Expr> param = executor->eval(ki, 3, thread->stack).value;
 //				ConstantExpr* functionPtr = dyn_cast<ConstantExpr>(param);
 //				threadEntrance = (Function*)(functionPtr->getZExtValue());
 //				//assert(0 && "thread entrance not exist");
@@ -186,7 +186,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 //				//								executor->kmodule->functionMap[threadEntrance];
 //				//runtime.pushStackFrame(kf->function, kf->numRegisters, executor->nextThreadId);
 //			}
-			ref<Expr> pthreadAddress = executor->eval(ki, 1, state.currentThread).value;
+			ref<Expr> pthreadAddress = executor->eval(ki, 1, state.currentThread->stack).value;
 			ObjectPair pthreadop;
 			bool success = executor->getMemoryObject(pthreadop, state, pthreadAddress);
 			if (success) {
@@ -211,7 +211,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			CallInst* calli = dyn_cast<CallInst>(inst);
 			IntegerType* paramType =
 					(IntegerType*) (calli->getArgOperand(0)->getType());
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ConstantExpr* joinedThreadIdExpr = dyn_cast<ConstantExpr>(param);
 			uint64_t joinedThreadId = joinedThreadIdExpr->getZExtValue(
 					paramType->getBitWidth());
@@ -224,7 +224,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 //			Event *unlock;
 			bool success;
 			//get lock
-			param = executor->eval(ki, 2, thread).value;
+			param = executor->eval(ki, 2, thread->stack).value;
 			success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
@@ -248,7 +248,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				assert(0 && "mutex not exist");
 			}
 			//get cond
-			param = executor->eval(ki, 1, thread).value;
+			param = executor->eval(ki, 1, thread->stack).value;
 			success = executor->getMemoryObject(op, state, param);
 			if (success) {
 				const MemoryObject* mo = op.first;
@@ -263,7 +263,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			cerr << "wait : " << item->condName << "\n";
 #endif
 		} else if (f->getName().str() == "pthread_cond_signal") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ObjectPair op;
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
@@ -279,7 +279,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			cerr << "signal  : " << item->condName << "\n";
 #endif
 		} else if (f->getName().str() == "pthread_cond_broadcast") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ObjectPair op;
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
@@ -295,7 +295,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			cerr << "broadcast cond  : " << item->condName << "\n";
 #endif
 		} else if (f->getName().str() == "pthread_mutex_lock") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ObjectPair op;
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
@@ -307,7 +307,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				assert(0 && "mutex not exist");
 			}
 		} else if (f->getName().str() == "pthread_mutex_unlock") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ObjectPair op;
 			bool success = executor->getMemoryObject(op, state, param);
 			if (success) {
@@ -319,7 +319,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				assert(0 && "mutex not exist");
 			}
 		} else if (f->getName().str() == "pthread_barrier_wait") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ConstantExpr* barrierAddressExpr = dyn_cast<ConstantExpr>(param);
 			uint64_t barrierAddress = barrierAddressExpr->getZExtValue();
 			map<uint64_t, BarrierInfo*>::iterator bri = barrierRecord.find(
@@ -340,7 +340,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				barrierInfo->addReleaseItem();
 			}
 		} else if (f->getName().str() == "pthread_barrier_init") {
-			ref<Expr> param = executor->eval(ki, 1, thread).value;
+			ref<Expr> param = executor->eval(ki, 1, thread->stack).value;
 			ConstantExpr* barrierAddressExpr = dyn_cast<ConstantExpr>(param);
 			uint64_t barrierAddress = barrierAddressExpr->getZExtValue();
 			map<uint64_t, BarrierInfo*>::iterator bri = barrierRecord.find(
@@ -353,7 +353,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				barrierInfo = bri->second;
 			}
 
-			param = executor->eval(ki, 3, thread).value;
+			param = executor->eval(ki, 3, thread->stack).value;
 			ConstantExpr* countExpr = dyn_cast<ConstantExpr>(param);
 			barrierInfo->count = countExpr->getZExtValue();
 			//				} else if (f->getName().str() == "printf") {
@@ -393,7 +393,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 			//						rdManager.insertPrintfParam(name, constant);
 			//					}
 		} else if (f->getName() == "make_taint") {
-			ref<Expr> address = executor->eval(ki, 1, thread).value;
+			ref<Expr> address = executor->eval(ki, 1, thread->stack).value;
 			ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
 			if (realAddress) {
 				uint64_t key = realAddress->getZExtValue();
@@ -457,7 +457,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 		for (std::vector<std::pair<unsigned, uint64_t> >::iterator it =
 				kgepi->indices.begin(), ie = kgepi->indices.end(); it != ie;
 				++it) {
-			ref<Expr> index = executor->eval(ki, it->first, thread).value;
+			ref<Expr> index = executor->eval(ki, it->first, thread->stack).value;
 //			std::cerr << "kgepi->index : " << index << std::endl;
 			item->instParameter.push_back(index);
 		}
@@ -476,10 +476,10 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 //				uint64_t elementBitWidth =
 //						executor->kmodule->targetData->getTypeSizeInBits(
 //								pointedTy->getArrayElementType());
-//				Expr* expr = executor->eval(ki, 0, thread).value.get();
+//				Expr* expr = executor->eval(ki, 0, thread->stack).value.get();
 //				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(expr);
 //				uint64_t base = cexpr->getZExtValue();
-//				expr = executor->eval(ki, 2, thread).value.get();
+//				expr = executor->eval(ki, 2, thread->stack).value.get();
 //				cexpr = dyn_cast<ConstantExpr>(expr);
 //				uint64_t selectedIndex = cexpr->getZExtValue();
 			}
@@ -499,10 +499,10 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				uint64_t elementBitWidth =
 						executor->kmodule->targetData->getTypeSizeInBits(
 								pointedTy);
-				Expr* expr = executor->eval(ki, 0, thread).value.get();
+				Expr* expr = executor->eval(ki, 0, thread->stack).value.get();
 				ConstantExpr* cexpr = dyn_cast<ConstantExpr>(expr);
 				uint64_t base = cexpr->getZExtValue();
-				expr = executor->eval(ki, 1, thread).value.get();
+				expr = executor->eval(ki, 1, thread->stack).value.get();
 				cexpr = dyn_cast<ConstantExpr>(expr);
 				uint64_t index = cexpr->getZExtValue();
 				uint64_t startAddress = base + index * elementBitWidth / 8;
@@ -552,7 +552,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 		BranchInst *bi = dyn_cast<BranchInst>(inst);
 		if (!bi->isUnconditional()) {
 			item->isConditionInst = true;
-			ref<Expr> param = executor->eval(ki, 0, thread).value;
+			ref<Expr> param = executor->eval(ki, 0, thread->stack).value;
 			ConstantExpr* condition = dyn_cast<ConstantExpr>(param);
 			if (condition->isTrue()) {
 				item->brCondition = true;
@@ -569,7 +569,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 				|| li->getPointerOperand()->getName().equals("stderr")) {
 			item->eventType = Event::IGNORE;
 		} else {
-			ref<Expr> address = executor->eval(ki, 0, thread).value;
+			ref<Expr> address = executor->eval(ki, 0, thread->stack).value;
 			ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
 			if (realAddress) {
 //				Expr::Width size = executor->getWidthForLLVMType(
@@ -634,9 +634,9 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	}
 
 	case Instruction::Store: {
-		ref<Expr> value = executor->eval(ki, 0, thread).value;
+		ref<Expr> value = executor->eval(ki, 0, thread->stack).value;
 		item->instParameter.push_back(value);
-		ref<Expr> address = executor->eval(ki, 1, thread).value;
+		ref<Expr> address = executor->eval(ki, 1, thread->stack).value;
 		ConstantExpr* realAddress = dyn_cast<ConstantExpr>(address.get());
 		if (realAddress) {
 			uint64_t key = realAddress->getZExtValue();
@@ -686,7 +686,7 @@ void PSOListener::executeInstruction(ExecutionState &state, KInstruction *ki) {
 	}
 	case Instruction::Switch: {
 //		SwitchInst *si = cast<SwitchInst>(inst);
-		ref<Expr> cond = executor->eval(ki, 0, thread).value;
+		ref<Expr> cond = executor->eval(ki, 0, thread->stack).value;
 		item->instParameter.push_back(cond);
 		item->isConditionInst = true;
 		item->brCondition = true;
@@ -1049,7 +1049,7 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 	Function *f = lastEvent->calledFunction;
 	if (f->getName() == "strcpy") {
 
-//		ref<Expr> scrAddress = executor->eval(ki, 2, state.currentThread).value;
+//		ref<Expr> scrAddress = executor->eval(ki, 2, state.currentThread->stack).value;
 //		ObjectPair scrop;
 //		//处理scr
 //		executor->getMemoryObject(scrop, state, scrAddress);
@@ -1081,7 +1081,7 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 //				break;
 //			}
 //		}
-		ref<Expr> destAddress = executor->eval(ki, 1, state.currentThread).value;
+		ref<Expr> destAddress = executor->eval(ki, 1, state.currentThread->stack).value;
 		ObjectPair destop;
 		//处理dest
 		executor->getMemoryObject(destop, state, destAddress);
@@ -1114,21 +1114,21 @@ void PSOListener::handleExternalFunction(ExecutionState& state,
 		}
 
 	} else if (f->getName() == "getrlimit") {
-		ref<Expr> address = executor->eval(ki, 2, state.currentThread).value;
+		ref<Expr> address = executor->eval(ki, 2, state.currentThread->stack).value;
 		ObjectPair op;
 		Type* type = inst->getOperand(1)->getType()->getPointerElementType();
 		executor->getMemoryObject(op, state, address);
 		uint64_t start = dyn_cast<ConstantExpr>(address)->getZExtValue();
 		analyzeInputValue(start, op, type);
 	} else if (f->getName() == "lstat") {
-		ref<Expr> address = executor->eval(ki, 2, state.currentThread).value;
+		ref<Expr> address = executor->eval(ki, 2, state.currentThread->stack).value;
 		ObjectPair op;
 		Type* type = inst->getOperand(1)->getType()->getPointerElementType();
 		executor->getMemoryObject(op, state, address);
 		uint64_t start = dyn_cast<ConstantExpr>(address)->getZExtValue();
 		analyzeInputValue(start, op, type);
 	} else if (f->getName() == "time") {
-		ref<Expr> address = executor->eval(ki, 1, state.currentThread).value;
+		ref<Expr> address = executor->eval(ki, 1, state.currentThread->stack).value;
 		ObjectPair op;
 		Type* type = inst->getOperand(0)->getType()->getPointerElementType();
 		executor->getMemoryObject(op, state, address);
@@ -1261,12 +1261,12 @@ unsigned PSOListener::getStoreTimeForTaint(uint64_t address) {
 //获取函数指针指向的Function
 Function * PSOListener::getPointeredFunction(ExecutionState & state,
 		KInstruction * ki) {
-	StackFrame* sf = &state.currentThread->stackk.back();
+	StackFrame* sf = &state.currentThread->stack.realStack.back();
 	//外部函数调用不会创建函数栈,其它函数调用会创建,此处需判断之前Call指令的执行是否已经创建了新的函数栈,
 	//如果是,则倒数第二个元素是Call指令所在的函数栈.
 	if (!ki->inst->getParent()->getParent()->getName().equals(
 			sf->kf->function->getName())) {
-		sf = &state.currentThread->stackk[state.currentThread->stackk.size() - 2];
+		sf = &state.currentThread->stack.realStack[state.currentThread->stack.realStack.size() - 2];
 	}
 	int vnumber = ki->operands[0];
 	ref<Expr> result;

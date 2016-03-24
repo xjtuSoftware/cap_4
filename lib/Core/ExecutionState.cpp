@@ -399,12 +399,6 @@ std::ostream &klee::operator<<(std::ostream &os, const MemoryMap &mm) {
 //  return true;
 //}
 
-void ExecutionState::dumpStack(std::ostream &out) const {
-	for (ThreadList::iterator ti = threadList.begin(), te = threadList.end(); ti != te; ti++) {
-		(*ti)->dumpStack(out);
-	}
-}
-
 Thread* ExecutionState::findThreadById(unsigned threadId) {
 	return threadList.findThreadById(threadId);
 }
