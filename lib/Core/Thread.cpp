@@ -16,14 +16,14 @@ namespace klee {
 
 
 
-Thread::Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpace, KFunction* kf)
+Thread::Thread(unsigned threadId, Thread* parentThread, KFunction* kf)
 	: pc(kf->instructions),
 	  prevPC(pc),
 	  incomingBBIndex(0),
 	  threadId(threadId),
 	  parentThread(parentThread),
-	  threadState(Thread::RUNNABLE) {
-	stack(addressSpace);
+	  threadState(Thread::RUNNABLE),
+	  stack(parentThread->stack) {
 	for(unsigned i = 0; i < 5; i++) {
 		vectorClock.push_back(0);
 	}
@@ -31,7 +31,7 @@ Thread::Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpa
 	stack.pushFrame(0, kf);
 }
 
-Thread::Thread(Thread& anotherThread, AddressSpace* addressSpace)
+Thread::Thread(Thread& anotherThread)
 	: pc(anotherThread.pc),
 	  prevPC(anotherThread.prevPC),
 	  incomingBBIndex(anotherThread.incomingBBIndex),
@@ -39,7 +39,6 @@ Thread::Thread(Thread& anotherThread, AddressSpace* addressSpace)
 	  parentThread(anotherThread.parentThread),
 	  threadState(anotherThread.threadState),
 	  stack(anotherThread.stack) {
-	stack(addressSpace);
 	for(unsigned i = 0; i < 5; i++) {
 		vectorClock.push_back(0);
 	}

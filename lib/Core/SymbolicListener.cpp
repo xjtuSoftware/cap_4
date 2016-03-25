@@ -102,7 +102,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "load symbolic print");
 				}
-				executor->evalAgainst(ki, 0, thread, value);
+				executor->evalAgainst(ki, 0, stack[thread->threadId], value);
 			}
 			break;
 		}
@@ -113,7 +113,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "store address is symbolic");
 				}
-				executor->evalAgainst(ki, 1, thread, value);
+				executor->evalAgainst(ki, 1, stack[thread->threadId], value);
 			}
 
 			ref<Expr> value = executor->eval(ki, 0, stack[thread->threadId]).value;
@@ -146,7 +146,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						} else if (id == Type::PointerTyID && value->getKind() == Expr::Read) {
 							assert (0 && "pointer is expr::read");
 						}
-						executor->evalAgainst(ki, 0, thread, svalue);
+						executor->evalAgainst(ki, 0, stack[thread->threadId], svalue);
 					} else {
 						ref<Expr> svalue = (*currentEvent)->instParameter.back();
 						if (svalue->getKind() != Expr::Constant) {
@@ -154,7 +154,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						} else 	if (id == Type::PointerTyID) {
 							assert (0 && "pointer is other symbolic");
 						}
-						executor->evalAgainst(ki, 0, thread, svalue);
+						executor->evalAgainst(ki, 0, stack[thread->threadId], svalue);
 					}
 				} else {
 					if (value->getKind() != Expr::Constant) {
@@ -169,7 +169,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						if (svalue->getKind() != Expr::Constant) {
 							assert(0 && "store pointer is symbolic");
 						}
-						executor->evalAgainst(ki, 0, thread, svalue);
+						executor->evalAgainst(ki, 0, stack[thread->threadId], svalue);
 						ref<Expr> address = executor->eval(ki, 1, stack[thread->threadId]).value;
 						addressSymbolicMap[address] = value;
 //						cerr << "address : " << address << " value : " << value << "\n";
@@ -225,7 +225,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 						trace->brSymbolicExpr.push_back(constraint);
 						trace->brEvent.push_back((*currentEvent));
 					}
-					executor->evalAgainst(ki, 0, thread, value2);
+					executor->evalAgainst(ki, 0, stack[thread->threadId], value2);
 				}
 				if (kleeBr == true) {
 					kleeBr = false;
@@ -246,7 +246,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "call function is symbolic");
 				}
-				executor->evalAgainst(ki, 0, thread, value);
+				executor->evalAgainst(ki, 0, stack[thread->threadId], value);
 			}
 //			std::cerr<<"isFunctionWithSourceCode : ";
 //					(*currentEvent)->inst->inst->dump();
@@ -275,7 +275,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 							} else if (id == Type::PointerTyID && value->getKind() == Expr::Read) {
 								assert (0 && "pointer is expr::read");
 							}
-							executor->evalAgainst(ki, j, thread, svalue);
+							executor->evalAgainst(ki, j, stack[thread->threadId], svalue);
 						} else {
 							ref<Expr> svalue = (*currentEvent)->instParameter[j-1];
 							if (svalue->getKind() != Expr::Constant) {
@@ -287,7 +287,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 									assert (0 && "pointer is other symbolic");
 								}
 							}
-							executor->evalAgainst(ki, j, thread, svalue);
+							executor->evalAgainst(ki, j, stack[thread->threadId], svalue);
 						}
 					} else {
 						if (value->getKind() != Expr::Constant) {
@@ -306,7 +306,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}
-				executor->evalAgainst(ki, 0, thread, value);
+				executor->evalAgainst(ki, 0, stack[thread->threadId], value);
 			} else if (base->getKind() == Expr::Read) {
 				assert (0 && "pointer is expr::read");
 			}
@@ -319,7 +319,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 //				std::cerr << "kgepi->index : " << index << std::endl;
 //				std::cerr << "first : " << *first << std::endl;
 				if (index->getKind() != Expr::Constant) {
-					executor->evalAgainst(ki, it->first, thread, *first);
+					executor->evalAgainst(ki, it->first, stack[thread->threadId], *first);
 					ref<Expr> constraint = EqExpr::create(index, *first);
 //					cerr << "event name : " << (*currentEvent)->eventName << "\n";
 //					cerr << "constraint : " << constraint << "\n";
@@ -347,7 +347,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				ref<Expr> constraint = EqExpr::create(cond1, cond2);
 				trace->brSymbolicExpr.push_back(constraint);
 				trace->brEvent.push_back((*currentEvent));
-				executor->evalAgainst(ki, 0, thread, cond2);
+				executor->evalAgainst(ki, 0, stack[thread->threadId], cond2);
 			}
 			break;
 		}
@@ -360,7 +360,7 @@ void SymbolicListener::executeInstruction(ExecutionState &state, KInstruction *k
 				if (value->getKind() != Expr::Constant) {
 					assert(0 && "GetElementPtr symbolic print");
 				}
-				executor->evalAgainst(ki, 0, thread, value);
+				executor->evalAgainst(ki, 0, stack[thread->threadId], value);
 			} else if (arg->getKind() == Expr::Read) {
 				assert (0 && "pointer is expr::read");
 			}

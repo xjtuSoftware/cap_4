@@ -53,7 +53,7 @@ namespace klee {
 			std::map<std::string, ref<Expr> > symbolicMap;
 			bool kleeBr;
 			AddressSpace addressSpace;
-			std::map<unsigned, StackType > stack;
+			std::map<unsigned, StackType *> stack;
 
 		private:
 

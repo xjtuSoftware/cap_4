@@ -7,31 +7,36 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Common.h"
-
-#include "CoreStats.h"
-#include "Executor.h"
-#include "StatsTracker.h"
-#include "ExecutorTimerInfo.h"
-
-#include "klee/ExecutionState.h"
-#include "klee/Internal/Module/InstructionInfoTable.h"
-#include "klee/Internal/Module/KInstruction.h"
-#include "klee/Internal/Module/KModule.h"
-#include "klee/Internal/System/Time.h"
-
-#if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
-#include "llvm/IR/Function.h"
-#else
-#include "llvm/Function.h"
-#endif
-
-#include "llvm/Support/CommandLine.h"
-
-#include <unistd.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/IR/Function.h>
+#include <llvm/Support/CommandLine.h>
+#include <math.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <math.h>
+#include <cstdio>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+
+#include "../../include/klee/ExecutionState.h"
+#include "../../include/klee/Internal/Module/InstructionInfoTable.h"
+#include "../../include/klee/Internal/Module/KInstruction.h"
+#include "../../include/klee/Internal/Module/KModule.h"
+#include "../../include/klee/Internal/System/Time.h"
+#include "../../include/klee/Interpreter.h"
+#include "../../include/klee/Statistic.h"
+#include "../../include/klee/Statistics.h"
+#include "CallPathManager.h"
+#include "Common.h"
+#include "CoreStats.h"
+#include "Executor.h"
+#include "ExecutorTimerInfo.h"
+#include "StackFrame.h"
+#include "StatsTracker.h"
+#include "Thread.h"
 
 
 using namespace llvm;
@@ -139,12 +144,12 @@ void Executor::processTimers(ExecutionState *current,
           ExecutionState *es = *it;
           *os << "(" << es << ",";
           *os << "[";
-          Thread::stack_ty::iterator next = es->currentThread->stackk.begin();
+          std::vector<StackFrame>::iterator next = es->currentThread->stack.realStack.begin();
           ++next;
-          for (Thread::stack_ty::iterator sfIt = es->currentThread->stackk.begin(),
-                 sf_ie = es->currentThread->stackk.end(); sfIt != sf_ie; ++sfIt) {
+          for (std::vector<StackFrame>::iterator sfIt = es->currentThread->stack.realStack.begin(),
+                 sf_ie = es->currentThread->stack.realStack.end(); sfIt != sf_ie; ++sfIt) {
             *os << "('" << sfIt->kf->function->getName().str() << "',";
-            if (next == es->currentThread->stackk.end()) {
+            if (next == es->currentThread->stack.realStack.end()) {
               *os << es->currentThread->prevPC->info->line << "), ";
             } else {
               *os << next->caller->info->line << "), ";
@@ -153,7 +158,7 @@ void Executor::processTimers(ExecutionState *current,
           }
           *os << "], ";
 
-          StackFrame &sf = es->currentThread->stackk.back();
+          StackFrame &sf = es->currentThread->stack.realStack.back();
           uint64_t md2u = computeMinDistToUncovered(es->currentThread->pc,
                                                     sf.minDistToUncoveredOnReturn);
           uint64_t icnt = theStatisticManager->getIndexedValue(stats::instructions,

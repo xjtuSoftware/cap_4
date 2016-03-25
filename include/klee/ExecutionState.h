@@ -23,6 +23,7 @@
 #include "../../lib/Core/Memory.h"
 #include "../../lib/Core/MutexManager.h"
 #include "../../lib/Core/Prefix.h"
+#include "../../lib/Core/StackType.h"
 #include "../../lib/Core/Thread.h"
 #include "../../lib/Core/ThreadList.h"
 #include "../../lib/Core/ThreadScheduler.h"
@@ -78,9 +79,6 @@ class ExecutionState {
 		// objects.
 		unsigned underConstrained;
 		unsigned depth;
-		// pc - pointer to current instruction stream
-//  KInstIterator pc, prevPC;
-//  stack_ty stack;
 		ConstraintManager constraints;
 		mutable double queryCost;
 		double weight;
@@ -107,6 +105,7 @@ class ExecutionState {
 		// Used by the checkpoint/rollback methods for fake objects.
 		// FIXME: not freeing things on branch deletion.
 		MemoryMap shadowObjects;
+		StackType *currentStack;
 
 		//unsigned incomingBBIndex;
 

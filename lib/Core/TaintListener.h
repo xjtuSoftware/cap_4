@@ -43,7 +43,7 @@ private:
 	std::map<ref<Expr>, ref<Expr> > addressSymbolicMap;
 	std::map<std::string, ref<Expr> > symbolicMap;
 	AddressSpace addressSpace;
-	std::map<unsigned, StackType> stack;
+	std::map<unsigned, StackType *> stack;
 
 private:
 

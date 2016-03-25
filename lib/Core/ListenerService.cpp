@@ -95,8 +95,8 @@ void ListenerService::startControl(Executor* executor){
 	runState = rdManager.runState;
 	switch (runState) {
 	case 0: {
-		BitcodeListener* PSOlistener = new PSOListener(executor, &rdManager);
-		pushListener(PSOlistener);
+//		BitcodeListener* PSOlistener = new PSOListener(executor, &rdManager);
+//		pushListener(PSOlistener);
 		executor->executionNum++;
 		gettimeofday(&start, NULL);
 		break;

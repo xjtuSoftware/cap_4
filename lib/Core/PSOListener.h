@@ -64,6 +64,8 @@ private:
 	std::map<uint64_t, unsigned> storeRecord;
 	std::map<uint64_t, llvm::Type*> usedGlobalVariableRecord;
 	std::map<uint64_t, BarrierInfo*> barrierRecord;
+	AddressSpace addressSpace;
+	std::map<unsigned, StackType*> stack;
 
 private:
 	//std::vector<string> monitoredFunction;

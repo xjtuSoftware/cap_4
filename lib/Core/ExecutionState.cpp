@@ -27,7 +27,7 @@
 using namespace llvm;
 using namespace klee;
 
-namespace { 
+namespace {
   cl::opt<bool>
   DebugLogStateMerge("debug-log-state-merge");
 }
@@ -75,11 +75,11 @@ namespace {
 //  parentThread = &state;
 //}
 
-ExecutionState::ExecutionState(KFunction *kf) 
+ExecutionState::ExecutionState(KFunction *kf)
   : fakeState(false),
     underConstrained(false),
     depth(0),
-    queryCost(0.), 
+    queryCost(0.),
     weight(1),
     instsSinceCovNew(0),
     coveredNew(false),
@@ -90,7 +90,7 @@ ExecutionState::ExecutionState(KFunction *kf)
 
 	condManager.setMutexManager(&mutexManager);
 	threadScheduler = getThreadSchedulerByType(ThreadScheduler::FIFS);
-	Thread* thread = new Thread(getNextThreadId(), NULL, &addressSpace, kf);
+	Thread* thread = new Thread(getNextThreadId(), NULL, kf);
 	threadList.addThread(thread);
 	threadScheduler->addItem(thread);
 	currentThread = thread;
@@ -111,13 +111,13 @@ ExecutionState::ExecutionState(KFunction *kf, Prefix* prefix)
 
 	condManager.setMutexManager(&mutexManager);
 	threadScheduler = new GuidedThreadScheduler(this, ThreadScheduler::FIFS, prefix);
-	Thread* thread = new Thread(getNextThreadId(), NULL, &addressSpace, kf);
+	Thread* thread = new Thread(getNextThreadId(), NULL, kf);
 	threadList.addThread(thread);
 	threadScheduler->addItem(thread);
 	currentThread = thread;
 }
 
-ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions) 
+ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : fakeState(true),
     underConstrained(false),
     constraints(assumptions),
@@ -145,9 +145,6 @@ ExecutionState::ExecutionState(const ExecutionState& state)
     fakeState(state.fakeState),
     underConstrained(state.underConstrained),
     depth(state.depth),
-//    pc(state.pc),
-//    prevPC(state.prevPC),
-//    stack(state.stack),
     constraints(state.constraints),
     queryCost(state.queryCost),
     weight(state.weight),
@@ -158,26 +155,21 @@ ExecutionState::ExecutionState(const ExecutionState& state)
     coveredNew(state.coveredNew),
     forkDisabled(state.forkDisabled),
     coveredLines(state.coveredLines),
-    //ptreeNode(state.ptreeNode),
     symbolics(state.symbolics),
     arrayNames(state.arrayNames),
     shadowObjects(state.shadowObjects)
-//    incomingBBIndex(state.incomingBBIndex),
-//    threadId(state.threadId),
-//    parentThread(NULL),
-//    threadState(state.threadState)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
 
   for (ThreadList::iterator ti = state.threadList.begin(), te = state.threadList.end(); ti != te; ti++) {
-	  Thread* thread = new Thread(**ti, &addressSpace);
+	  Thread* thread = new Thread(**ti);
 	  threadList.addThread(thread);
   }
   currentThread = findThreadById(state.currentThread->threadId);
   std::map<unsigned, Thread*> unfinishedThread = threadList.getAllUnfinishedThreads();
-  //threadScheduler = new FIFSThreadScheduler(*(FIFSThreadScheduler*)(state.threadScheduler), unfinishedThread);
-  threadScheduler = new PreemptiveThreadScheduler(*(PreemptiveThreadScheduler*)(state.threadScheduler), unfinishedThread);
+  threadScheduler = new FIFSThreadScheduler(*(FIFSThreadScheduler*)(state.threadScheduler), unfinishedThread);
+//  threadScheduler = new PreemptiveThreadScheduler(*(PreemptiveThreadScheduler*)(state.threadScheduler), unfinishedThread);
 }
 
 ExecutionState *ExecutionState::branch() {
@@ -205,7 +197,7 @@ ExecutionState *ExecutionState::branch() {
 //  stack.pop_back();
 //}
 
-void ExecutionState::addSymbolic(const MemoryObject *mo, const Array *array) { 
+void ExecutionState::addSymbolic(const MemoryObject *mo, const Array *array) {
   mo->refCount++;
   symbolics.push_back(std::make_pair(mo, array));
 }
@@ -455,7 +447,7 @@ unsigned ExecutionState::getNextThreadId() {
 }
 
 Thread* ExecutionState::createThread(KFunction *kf) {
-	Thread* newThread = new Thread(getNextThreadId(), currentThread, &addressSpace, kf);
+	Thread* newThread = new Thread(getNextThreadId(), currentThread, kf);
 	threadList.addThread(newThread);
 	threadScheduler->addItem(newThread);
 	return newThread;
@@ -466,7 +458,7 @@ Thread* ExecutionState::createThread(KFunction *kf, unsigned threadId) {
 		nextThreadId = threadId + 1;
 		assert (nextThreadId <= 6 && "vector clock 只有5个");
 	}
-	Thread* newThread = new Thread(threadId, currentThread, &addressSpace, kf);
+	Thread* newThread = new Thread(threadId, currentThread, kf);
 	threadList.addThread(newThread);
 	threadScheduler->addItem(newThread);
 	return newThread;

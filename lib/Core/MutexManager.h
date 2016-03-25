@@ -8,11 +8,11 @@
 #ifndef MUTEXMANAGER_H_
 #define MUTEXMANAGER_H_
 
+#include <iostream>
 #include <map>
 #include <string>
-#include <vector>
+
 #include "Mutex.h"
-#include "Thread.h"
 
 namespace klee {
 

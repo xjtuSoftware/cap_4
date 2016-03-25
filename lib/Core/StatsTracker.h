@@ -27,7 +27,7 @@ namespace klee {
   class InstructionInfoTable;
   class InterpreterHandler;
   struct KInstruction;
-  struct StackFrame;
+  class StackFrame;
 
   class StatsTracker {
     friend class WriteStatsTimer;

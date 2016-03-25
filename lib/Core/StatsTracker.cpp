@@ -276,7 +276,7 @@ void StatsTracker::stepInstruction(ExecutionState &es) {
 
     Instruction *inst = es.currentThread->pc->inst;
     const InstructionInfo &ii = *es.currentThread->pc->info;
-    StackFrame &sf = es.currentThread->stack.realStack.back();
+    StackFrame &sf = es.currentStack->realStack.back();
     theStatisticManager->setIndex(ii.id);
     if (UseCallPaths)
       theStatisticManager->setContext(&sf.callPathNode->statistics);
@@ -306,7 +306,7 @@ void StatsTracker::stepInstruction(ExecutionState &es) {
 /* Should be called _after_ the es->pushFrame() */
 void StatsTracker::framePushed(ExecutionState &es, StackFrame *parentFrame) {
   if (OutputIStats) {
-    StackFrame &sf = es.currentThread->stack.realStack.back();
+    StackFrame &sf = es.currentStack->realStack.back();
 
     if (UseCallPaths) {
       CallPathNode *parent = parentFrame ? parentFrame->callPathNode : 0;

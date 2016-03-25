@@ -38,8 +38,8 @@ public:
 	StackType stack;
 	std::vector<unsigned> vectorClock;
 public:
-	Thread(unsigned threadId, Thread* parentThread, AddressSpace* addressSpace, KFunction* kf);
-	Thread(Thread& anotherThread, AddressSpace* addressSpace);
+	Thread(unsigned threadId, Thread* parentThread, KFunction* kf);
+	Thread(Thread& anotherThread);
 	virtual ~Thread();
 
 

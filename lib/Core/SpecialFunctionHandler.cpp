@@ -77,7 +77,6 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
 		add("klee_print_expr", handlePrintExpr, false),
 		add("klee_print_range", handlePrintRange, false),
 		add("klee_set_forking", handleSetForking, false),
-		add("klee_stack_trace", handleStackTrace, false),
 		add("klee_warning", handleWarning, false),
 		add("klee_warning_once", handleWarningOnce, false),
 		add("klee_alias_function", handleAliasFunction, false),
@@ -238,7 +237,7 @@ std::string SpecialFunctionHandler::readStringAtAddress(ExecutionState &state,
 	ObjectPair op;
 	addressExpr = executor.toUnique(state, addressExpr);
 	ref<ConstantExpr> address = cast<ConstantExpr>(addressExpr);
-	if (!state.addressSpace.resolveOne(address, op))
+	if (!state.currentStack->addressSpace->resolveOne(address, op))
 		assert(0 && "XXX out of bounds / multiple resolution unhandled");
 	bool res;
 	assert(
@@ -431,7 +430,7 @@ void SpecialFunctionHandler::handleIsSymbolic(ExecutionState &state,
 			arguments.size() == 1
 					&& "invalid number of arguments to klee_is_symbolic");
 
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 			ConstantExpr::create(!isa<ConstantExpr>(arguments[0]),
 					Expr::Int32));
 }
@@ -481,11 +480,6 @@ void SpecialFunctionHandler::handleSetForking(ExecutionState &state,
 	}
 }
 
-void SpecialFunctionHandler::handleStackTrace(ExecutionState &state,
-		KInstruction *target, std::vector<ref<Expr> > &arguments) {
-	state.dumpStack(std::cout);
-}
-
 void SpecialFunctionHandler::handleWarning(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	assert(
@@ -493,7 +487,7 @@ void SpecialFunctionHandler::handleWarning(ExecutionState &state,
 					&& "invalid number of arguments to klee_warning");
 
 	std::string msg_str = readStringAtAddress(state, arguments[0]);
-	klee_warning("%s: %s", state.currentThread->stackk.back().kf->function->getName().data(),
+	klee_warning("%s: %s", state.currentStack->realStack.back().kf->function->getName().data(),
 			msg_str.c_str());
 }
 
@@ -505,7 +499,7 @@ void SpecialFunctionHandler::handleWarningOnce(ExecutionState &state,
 
 	std::string msg_str = readStringAtAddress(state, arguments[0]);
 	klee_warning_once(0, "%s: %s",
-			state.currentThread->stackk.back().kf->function->getName().data(), msg_str.c_str());
+			state.currentStack->realStack.back().kf->function->getName().data(), msg_str.c_str());
 }
 
 void SpecialFunctionHandler::handlePrintRange(ExecutionState &state,
@@ -547,7 +541,7 @@ void SpecialFunctionHandler::handleGetObjSize(ExecutionState &state,
 	executor.resolveExact(state, arguments[0], rl, "klee_get_obj_size");
 	for (Executor::ExactResolutionList::iterator it = rl.begin(), ie = rl.end();
 			it != ie; ++it) {
-		executor.bindLocal(target, it->second->currentThread,
+		executor.bindLocal(target, it->second->currentStack,
 				ConstantExpr::create(it->first.first->size, Expr::Int32));
 	}
 }
@@ -558,7 +552,7 @@ void SpecialFunctionHandler::handleGetErrno(ExecutionState &state,
 	assert(
 			arguments.size() == 0
 					&& "invalid number of arguments to klee_get_errno");
-	executor.bindLocal(target, state.currentThread, ConstantExpr::create(errno, Expr::Int32));
+	executor.bindLocal(target, state.currentStack, ConstantExpr::create(errno, Expr::Int32));
 }
 
 void SpecialFunctionHandler::handleCalloc(ExecutionState &state,
@@ -624,7 +618,7 @@ void SpecialFunctionHandler::handleCheckMemoryAccess(ExecutionState &state,
 	} else {
 		ObjectPair op;
 
-		if (!state.addressSpace.resolveOne(cast<ConstantExpr>(address), op)) {
+		if (!state.currentStack->addressSpace->resolveOne(cast<ConstantExpr>(address), op)) {
 			executor.terminateStateOnError(state,
 					"check_memory_access: memory error", "ptr.err",
 					executor.getAddressInfo(state, address));
@@ -665,7 +659,7 @@ void SpecialFunctionHandler::handleDefineFixedObject(ExecutionState &state,
 	uint64_t size = cast<ConstantExpr>(arguments[1])->getZExtValue();
 	MemoryObject *mo = executor.memory->allocateFixed(address, size,
 			state.currentThread->prevPC->inst);
-	executor.bindObjectInState(state, mo, false);
+	executor.bindObjectInState(state.currentStack, mo, false);
 	mo->isUserSpecified = true; // XXX hack;
 }
 
@@ -742,14 +736,14 @@ void SpecialFunctionHandler::handlePThreadCreate(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread create" << std::endl;
 	unsigned result = executor.executePThreadCreate(state, target, arguments);
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 			ConstantExpr::create(result, Expr::Int32));
 }
 
 void SpecialFunctionHandler::handlePThreadJoin(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	unsigned result = executor.executePThreadJoin(state, target, arguments);
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 			ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -767,7 +761,7 @@ void SpecialFunctionHandler::handlePThreadMutexLock(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread mutex lock" << std::endl;
 	unsigned result = executor.executePThreadMutexLock(state, target, arguments);
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 					ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -775,7 +769,7 @@ void SpecialFunctionHandler::handlePThreadMutexUnlock(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread mutex unlock" << std::endl;
 	unsigned result = executor.executePThreadMutexUnlock(state, target, arguments);
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 					ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -783,7 +777,7 @@ void SpecialFunctionHandler::handlePThreadCondWait(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread cond wait" << std::endl;
 	unsigned result = executor.executePThreadCondWait(state, target, arguments);
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 				ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -791,7 +785,7 @@ void SpecialFunctionHandler::handlePThreadCondSignal(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread cond signal" << std::endl;
 	unsigned result = executor.executePThreadCondSignal(state, target, arguments);
-		executor.bindLocal(target, state.currentThread,
+		executor.bindLocal(target, state.currentStack,
 					ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -799,7 +793,7 @@ void SpecialFunctionHandler::handlePThreadCondBroadcast(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	//std::cerr << "catch pthread cond signal" << std::endl;
 	unsigned result = executor.executePThreadCondBroadcast(state, target, arguments);
-		executor.bindLocal(target, state.currentThread,
+		executor.bindLocal(target, state.currentStack,
 					ConstantExpr::create(result, Expr::Int32));
 }
 
@@ -811,27 +805,27 @@ void SpecialFunctionHandler::handlePThreadExit(ExecutionState &state,
 void SpecialFunctionHandler::handlePThreadBarrierInit(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	unsigned result = executor.executePThreadBarrierInit(state, target, arguments);
-			executor.bindLocal(target, state.currentThread,
+			executor.bindLocal(target, state.currentStack,
 						ConstantExpr::create(result, Expr::Int32));
 }
 
 void SpecialFunctionHandler::handlePThreadBarrierWait(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	unsigned result = executor.executePThreadBarrierWait(state, target, arguments);
-			executor.bindLocal(target, state.currentThread,
+			executor.bindLocal(target, state.currentStack,
 						ConstantExpr::create(result, Expr::Int32));
 }
 
 void SpecialFunctionHandler::handlePThreadBarrierDestory(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
 	unsigned result = executor.executePThreadBarrierDestory(state, target, arguments);
-			executor.bindLocal(target, state.currentThread,
+			executor.bindLocal(target, state.currentStack,
 						ConstantExpr::create(result, Expr::Int32));
 }
 
 void SpecialFunctionHandler::handlePThreadSelf(ExecutionState &state,
 		KInstruction *target, std::vector<ref<Expr> > &arguments) {
-	executor.bindLocal(target, state.currentThread,
+	executor.bindLocal(target, state.currentStack,
 							ConstantExpr::create(state.currentThread->threadId, Expr::Int32));
 }
 
